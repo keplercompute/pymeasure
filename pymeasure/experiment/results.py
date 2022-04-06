@@ -411,6 +411,7 @@ class Results:
             while not header_read:
                 line = f.readline()
                 if line.startswith('{\n}'):
+                    #TODO untested
                     header = json.loads(list(json.load(f).keys())[0])
                     is_json = True
                     header_read = True
@@ -441,25 +442,28 @@ class Results:
                 # Empty dataframe
                 self._data = pd.DataFrame(columns=self.procedure.DATA_COLUMNS)
         else:  # Concatenate additional data, if any, to already loaded data
-            skiprows = len(self._data) + self._header_count
-            chunks = pd.read_csv(
-                self.data_filename,
-                comment=Results.COMMENT,
-                header=0,
-                names=self._data.columns,
-                chunksize=Results.CHUNK_SIZE, skiprows=skiprows, iterator=True
-            )
-            try:
-                tmp_frame = pd.concat(chunks, ignore_index=True)
-                # only append new data if there is any
-                # if no new data, tmp_frame dtype is object, which override's
-                # self._data's original dtype - this can cause problems plotting
-                # (e.g. if trying to plot int data on a log axis)
-                if len(tmp_frame) > 0:
-                    self._data = pd.concat([self._data, tmp_frame],
-                                           ignore_index=True)
-            except Exception:
-                pass  # All data is up to date
+            if self.output_format == 'JSON':
+                self.reload()
+            else:
+                skiprows = len(self._data) + self._header_count
+                chunks = pd.read_csv(
+                    self.data_filename,
+                    comment=Results.COMMENT,
+                    header=0,
+                    names=self._data.columns,
+                    chunksize=Results.CHUNK_SIZE, skiprows=skiprows, iterator=True
+                )
+                try:
+                    tmp_frame = pd.concat(chunks, ignore_index=True)
+                    # only append new data if there is any
+                    # if no new data, tmp_frame dtype is object, which override's
+                    # self._data's original dtype - this can cause problems plotting
+                    # (e.g. if trying to plot int data on a log axis)
+                    if len(tmp_frame) > 0:
+                        self._data = pd.concat([self._data, tmp_frame],
+                                               ignore_index=True)
+                except Exception:
+                    pass  # All data is up to date
         return self._data
 
     def reload(self):
