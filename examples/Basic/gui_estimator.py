@@ -40,18 +40,24 @@ class TestProcedure(Procedure):
 
     def execute(self):
         log.info("Starting to generate numbers")
+        iss = []
+        tands = []
         for i in range(self.iterations):
-            data = {
-                'Iteration': i,
-                'Random Number': random.random()
-            }
-            log.debug("Produced numbers: %s" % data)
-            self.emit('results', data)
+            iss.append(i)
+            tands.append(random.random())
+            log.debug("Produced numbers: %s" % tands[-1])
+
             self.emit('progress', 100 * i / self.iterations)
             sleep(self.delay)
             if self.should_stop():
                 log.warning("Catch stop command in procedure")
                 break
+
+        data = {
+            'Iteration': iss,
+            'Random Number': tands
+        }
+        self.emit('results', data)
 
     def get_estimates(self, sequence_length=None, sequence=None):
         """ Function that returns estimates for the EstimatorWidget. If this function
@@ -120,7 +126,7 @@ class MainWindow(ManagedWindow):
         if procedure is None:
             procedure = self.make_procedure()
 
-        results = Results(procedure, filename)
+        results = Results(procedure, filename, output_format='JSON')
         experiment = self.new_experiment(results)
 
         self.manager.queue(experiment)

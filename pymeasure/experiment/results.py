@@ -34,6 +34,8 @@ from string import Formatter
 
 import pandas as pd
 
+import json
+
 from .procedure import Procedure, UnknownProcedure
 
 log = logging.getLogger(__name__)
@@ -180,14 +182,35 @@ class CSVFormatter_Pandas(logging.Formatter):
         return self.delimiter.join(self.columns)
 
 
+class JSONFormatter(logging.Formatter):
+    """ Formatter of data results """
+
+    def __init__(self, parameters=None):
+        """
+        """
+        # the default encoder doesn't understand FloatParameter, etc.
+        # we could write our own encoder, but this one is easy enough.
+        base_types = {}
+        for key, item in parameters.items():
+            base_types[key] = item.value
+        self.key = json.dumps(base_types)
+        super().__init__()
+
+
+    def format(self, record):
+        """Formats a record as json.
+
+        :param record: record to format.
+        :type record: dict
+        :return: a string
+        """
+        return json.dumps({self.key: record}, indent=1)
+
+
+
 class Results:
     """ The Results class provides a convenient interface to reading and
     writing data in connection with a :class:`.Procedure` object.
-
-    :cvar COMMENT: The character used to identify a comment (default: #)
-    :cvar DELIMITER: The character used to delimit the data (default: ,)
-    :cvar LINE_BREAK: The character used for line breaks (default \\n)
-    :cvar CHUNK_SIZE: The length of the data chuck that is read
 
     :param procedure: Procedure object
     :param data_filename: The data filename where the data is or should be
@@ -207,14 +230,17 @@ class Results:
         self.procedure = procedure
         self.procedure_class = procedure.__class__
         self.parameters = procedure.parameter_objects()
-        self._header_count = -1
+        self.output_format = output_format
 
-        if output_format == 'CSV_PANDAS':
+        if self.output_format == 'CSV_PANDAS':
             self.formatter = CSVFormatter_Pandas(
                 columns=self.procedure.DATA_COLUMNS,
                 delimiter=self.DELIMITER,
                 line_break=self.LINE_BREAK
             )
+
+        elif self.output_format == 'JSON':
+            self.formatter = JSONFormatter(parameters=self.parameters)
 
         else:  # default to CSV
             self.formatter = CSVFormatter(columns=self.procedure.DATA_COLUMNS)
@@ -234,8 +260,13 @@ class Results:
         else:
             for filename in self.data_filenames:
                 with open(filename, 'w') as f:
-                    f.write(self.header())
-                    f.write(self.labels())
+                    if self.output_format == 'JSON':
+
+                        # Need empty file for JSON, we dump everything all at once
+                        self._header_count = 0
+                    else:
+                        f.write(self.header())
+                        f.write(self.labels())
             self._data = None
 
     def __getstate__(self):
@@ -317,28 +348,32 @@ class Results:
             procedure = procedure_class()
         else:
             procedure = None
-
-        header = header.split(Results.LINE_BREAK)
-        procedure_module = None
-        parameters = {}
-        for line in header:
-            if line.startswith(Results.COMMENT):
-                line = line[1:]  # Uncomment
-            else:
-                raise ValueError("Parsing a header which contains "
-                                 "uncommented sections")
-            if line.startswith("Procedure"):
-                regex = r"<(?:(?P<module>[^>]+)\.)?(?P<class>[^.>]+)>"
-                search = re.search(regex, line)
-                procedure_module = search.group("module")
-                procedure_class = search.group("class")
-            elif line.startswith("\t"):
-                separator = ": "
-                partitioned_line = line[1:].partition(separator)
-                if partitioned_line[1] != separator:
-                    raise Exception("Error partitioning header line %s." % line)
+        if isinstance(header, str):
+            header = header.split(Results.LINE_BREAK)
+            procedure_module = None
+            parameters = {}
+            for line in header:
+                if line.startswith(Results.COMMENT):
+                    line = line[1:]  # Uncomment
                 else:
-                    parameters[partitioned_line[0]] = partitioned_line[2]
+                    raise ValueError("Parsing a header which contains "
+                                     "uncommented sections")
+                if line.startswith("Procedure"):
+                    regex = r"<(?:(?P<module>[^>]+)\.)?(?P<class>[^.>]+)>"
+                    search = re.search(regex, line)
+                    procedure_module = search.group("module")
+                    procedure_class = search.group("class")
+                elif line.startswith("\t"):
+                    separator = ": "
+                    partitioned_line = line[1:].partition(separator)
+                    if partitioned_line[1] != separator:
+                        raise Exception("Error partitioning header line %s." % line)
+                    else:
+                        parameters[partitioned_line[0]] = partitioned_line[2]
+
+        elif isinstance(header, dict):
+            # we loaded from json
+            parameters = header
 
         if procedure is None:
             if procedure_class is None:
@@ -370,16 +405,24 @@ class Results:
         """
         header = ""
         header_read = False
+        is_json = False
         header_count = 0
         with open(data_filename) as f:
             while not header_read:
                 line = f.readline()
-                if line.startswith(Results.COMMENT):
+                if line.startswith('{\n}'):
+                    header = json.loads(list(json.load(f).keys())[0])
+                    is_json = True
+                    header_read = True
+                elif line.startswith(Results.COMMENT):
                     header += line.strip() + Results.LINE_BREAK
                     header_count += 1
                 else:
                     header_read = True
-        procedure = Results.parse_header(header[:-1], procedure_class)
+        if is_json:
+            procedure = Results.parse_header(header, procedure_class)
+        else:
+            procedure = Results.parse_header(header[:-1], procedure_class)
         results = Results(procedure, data_filename)
         results._header_count = header_count
         return results
@@ -423,16 +466,24 @@ class Results:
         """ Preforms a full reloading of the file data, neglecting
         any changes in the comments
         """
-        chunks = pd.read_csv(
-            self.data_filename,
-            comment=Results.COMMENT,
-            chunksize=Results.CHUNK_SIZE,
-            iterator=True
-        )
-        try:
-            self._data = pd.concat(chunks, ignore_index=True)
-        except Exception:
-            self._data = chunks.read()
+        if self.output_format == 'JSON':
+            with open(self.data_filename) as f:
+                chunk = json.load(f)
+            keys = list(chunk.keys())
+            if len(keys) != 1:
+                raise ValueError('Trying to load a non-JSON file as a JSON file')
+            self._data = pd.DataFrame(chunk[keys[0]])
+        else:
+            chunks = pd.read_csv(
+                self.data_filename,
+                comment=Results.COMMENT,
+                chunksize=Results.CHUNK_SIZE,
+                iterator=True
+            )
+            try:
+                self._data = pd.concat(chunks, ignore_index=True)
+            except Exception:
+                self._data = chunks.read()
 
     def __repr__(self):
         return "<{}(filename='{}',procedure={},shape={})>".format(
@@ -440,3 +491,8 @@ class Results:
             self.procedure.__class__.__name__,
             self.data.shape
         )
+
+
+
+
+
