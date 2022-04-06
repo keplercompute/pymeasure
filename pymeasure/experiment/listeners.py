@@ -25,6 +25,9 @@
 import logging
 from logging import StreamHandler, FileHandler
 
+from os import stat
+import json
+
 from ..log import QueueListener
 from ..thread import StoppableThread
 
@@ -103,6 +106,7 @@ class Recorder(QueueListener):
         """ Constructs a Recorder to record the Procedure data into
         the file path, by waiting for data on the subscription port
         """
+        self.results = results
         handlers = []
         for filename in results.data_filenames:
             fh = FileHandler(filename=filename, **kwargs)
@@ -117,3 +121,32 @@ class Recorder(QueueListener):
             handler.close()
 
         super().stop()
+
+    def _json_handle(self, record):
+        record = json.loads(record)
+        key = list(record.keys())[0]
+        item = record[key]
+
+        for file in self.results.data_filenames:
+            if stat(file).st_size == 0:
+                with open(file, 'w') as f:
+                    json.dump(record, f)
+
+            else:
+                with open(file, 'r') as f:
+                    extant = json.load(f)
+
+                if key in extant.keys():
+                    data = extant[key]
+                    for column, array in data.items():
+                        array.append(item[column])
+                else:
+                    extant[key] = item
+
+                with open(file, 'w') as f:
+                    json.dump(extant,f)
+
+
+
+
+

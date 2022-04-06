@@ -186,3 +186,147 @@ class Worker(StoppableThread):
             self.procedure.__class__.__name__,
             self.should_stop()
         )
+
+
+
+class Analyzer(StoppableThread):
+    """ Analyzer runs the analysis on a specified procedure set and emits information about
+    its progress and its status over a ZMQ TCP port.
+    """
+
+    def __init__(self, results, log_queue=None, log_level=logging.INFO, port=None):
+        """ Constructs a Worker to perform the Procedure
+        defined in the file at the filepath
+        """
+        super().__init__()
+
+        self.port = port
+        if not isinstance(results, Results):
+            raise ValueError("Invalid Results object during Worker construction")
+        self.results = results
+        self.results.procedure.check_parameters()
+        self.results.procedure.status = Procedure.QUEUED
+
+        self.recorder = None
+        self.recorder_queue = Queue()
+
+        self.monitor_queue = Queue()
+        if log_queue is None:
+            log_queue = Queue()
+        self.log_queue = log_queue
+        self.log_level = log_level
+
+        global log
+        log = logging.getLogger()
+        log.setLevel(self.log_level)
+        # log.handlers = []  # Remove all other handlers
+        # log.addHandler(TopicQueueHandler(self.monitor_queue))
+        # log.addHandler(QueueHandler(self.log_queue))
+
+        self.context = None
+        self.publisher = None
+        if self.port is not None and zmq is not None:
+            try:
+                self.context = zmq.Context()
+                log.debug("Worker ZMQ Context: %r" % self.context)
+                self.publisher = self.context.socket(zmq.PUB)
+                self.publisher.bind('tcp://*:%d' % self.port)
+                log.info("Worker connected to tcp://*:%d" % self.port)
+                # wait so that the socket will be ready before starting to emit messages
+                time.sleep(0.3)
+            except Exception:
+                log.exception("Couldn't establish ZMQ publisher!")
+                self.context = None
+                self.publisher = None
+
+    def join(self, timeout=0):
+        try:
+            super().join(timeout)
+        except (KeyboardInterrupt, SystemExit):
+            log.warning("User stopped Worker join prematurely")
+            self.stop()
+            super().join(0)
+
+    def emit(self, topic, record):
+        """ Emits data of some topic over TCP """
+        log.debug("Emitting message: %s %s", topic, record)
+
+        try:
+            self.publisher.send_serialized(
+                record,
+                serialize=lambda rec: (topic.encode(), cloudpickle.dumps(rec)),
+            )
+        except (NameError, AttributeError):
+            pass  # No dumps defined
+        if topic == 'results':
+            self.recorder.handle(record)
+        elif topic == 'status' or topic == 'progress':
+            self.monitor_queue.put((topic, record))
+
+    def handle_abort(self):
+        log.exception("User stopped Worker execution prematurely")
+        self.update_status(Procedure.ABORTED)
+
+    def handle_error(self):
+        log.exception("Worker caught an error on %r", self.procedure)
+        traceback_str = traceback.format_exc()
+        self.emit('error', traceback_str)
+        self.update_status(Procedure.FAILED)
+
+    def update_status(self, status):
+        self.procedure.status = status
+        self.emit('status', status)
+
+    def shutdown(self):
+        self.procedure.shutdown()
+
+        if self.should_stop() and self.procedure.status == Procedure.RUNNING:
+            self.update_status(Procedure.ABORTED)
+        elif self.procedure.status == Procedure.RUNNING:
+            self.update_status(Procedure.FINISHED)
+            self.emit('progress', 100.)
+
+        self.recorder.stop()
+        self.monitor_queue.put(None)
+        if self.context is not None:
+            # Cleanly close down ZMQ context and associated socket
+            # For some reason, we need to close the socket before the
+            # context, otherwise context termination hangs.
+            self.publisher.close()
+            self.context.term()
+
+    def run(self):
+        log.info("Worker thread started")
+
+        self.procedure = self.results.procedure
+
+        self.recorder = Recorder(self.results, self.recorder_queue)
+        self.recorder.start()
+
+        # locals()[self.procedures_file] = __import__(self.procedures_file)
+
+        # route Procedure methods & log
+        self.procedure.should_stop = self.should_stop
+        self.procedure.emit = self.emit
+
+        log.info("Worker started running an instance of %r", self.procedure.__class__.__name__)
+        self.update_status(Procedure.RUNNING)
+        self.emit('progress', 0.)
+
+        try:
+            self.procedure.startup()
+            self.procedure.execute()
+        except (KeyboardInterrupt, SystemExit):
+            self.handle_abort()
+        except Exception:
+            self.handle_error()
+        finally:
+            self.shutdown()
+            self.stop()
+
+    def __repr__(self):
+        return "<{}(port={},procedure={},should_stop={})>".format(
+            self.__class__.__name__, self.port,
+            self.procedure.__class__.__name__,
+            self.should_stop()
+        )

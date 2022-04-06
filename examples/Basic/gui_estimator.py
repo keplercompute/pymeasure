@@ -126,10 +126,7 @@ class MainWindow(ManagedWindow):
 
         if procedure is None:
             procedure = self.make_procedure()
-        now = time_ns()
         results = Results(procedure, filename, output_format='JSON')
-        then = time_ns()
-        print((then-now)*1e-9)
         experiment = self.new_experiment(results)
 
         self.manager.queue(experiment)
