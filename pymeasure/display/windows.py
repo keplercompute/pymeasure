@@ -205,6 +205,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
                  inputs_in_scrollarea=False,
                  directory_input=False,
                  hide_groups=True,
+                 port=5888,
                  ):
 
         super().__init__(parent)
@@ -224,6 +225,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
         log.setLevel(log_level)
         self.log.setLevel(log_level)
         self.widget_list = widget_list
+        self.port = port
 
         # Check if the get_estimates function is reimplemented
         self.use_estimator = not self.procedure_class.get_estimates == Procedure.get_estimates
@@ -267,9 +269,9 @@ class ManagedWindowBase(QtGui.QMainWindow):
             parent=self,
             hide_groups=self.hide_groups,
         )
-
         self.manager = Manager(self.widget_list,
                                self.browser,
+                               port=self.port,
                                log_level=self.log_level,
                                parent=self)
         self.manager.abort_returned.connect(self.abort_returned)
@@ -675,7 +677,6 @@ class ManagedWindow(ManagedWindowBase):
         if "widget_list" not in kwargs:
             kwargs["widget_list"] = ()
         kwargs["widget_list"] = kwargs["widget_list"] + (self.plot_widget, self.log_widget)
-
         super().__init__(procedure_class, **kwargs)
 
         # Setup measured_quantities once we know x_axis and y_axis

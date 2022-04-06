@@ -116,7 +116,8 @@ class MainWindow(ManagedWindow):
             x_axis='Iteration',
             y_axis='Random Number',
             sequencer=True,
-            sequence_file="gui_sequencer_example_sequence.txt"
+            sequence_file="gui_sequencer_example_sequence.txt",
+            port=None
         )
         self.setWindowTitle('GUI Example')
 

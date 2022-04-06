@@ -224,7 +224,6 @@ class Manager(QtCore.QObject):
             if self.experiments.has_next():
                 log.debug("Manager is initiating the next experiment")
                 self._running_experiment = self.experiments.next()
-
                 self._worker = Worker(self._running_experiment.results, port=self.port, log_level=self.log_level)
 
                 self._monitor = Monitor(self._worker.monitor_queue)
