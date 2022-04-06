@@ -12,11 +12,11 @@ python gui.py
 import sys
 import random
 import tempfile
-from time import sleep
+from time import sleep,time_ns
 
 from datetime import datetime, timedelta
 
-from pymeasure.experiment import Procedure, IntegerParameter, Parameter, FloatParameter
+from pymeasure.experiment import Procedure, IntegerParameter, Parameter, FloatParameter, unique_filename
 from pymeasure.experiment import Results
 from pymeasure.display.Qt import QtGui
 from pymeasure.display.windows import ManagedWindow
@@ -122,12 +122,14 @@ class MainWindow(ManagedWindow):
         self.setWindowTitle('GUI Example')
 
     def queue(self, procedure=None):
-        filename = tempfile.mktemp()
+        filename = unique_filename(r'G:\Shared drives\Kepler - Main (Internal)\Neal\testlog')
 
         if procedure is None:
             procedure = self.make_procedure()
-
+        now = time_ns()
         results = Results(procedure, filename, output_format='JSON')
+        then = time_ns()
+        print((then-now)*1e-9)
         experiment = self.new_experiment(results)
 
         self.manager.queue(experiment)

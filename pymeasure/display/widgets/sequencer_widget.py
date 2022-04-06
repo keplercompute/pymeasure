@@ -353,7 +353,7 @@ class SequencerWidget(QtGui.QWidget):
             )
 
             try:
-                sequence_entry = [{parameter: value} for value in values]
+                sequence_entry = [{parameter: value} for value in values.tolist()]
             except TypeError:
                 log.error(
                     "TypeError, likely no sequence for one of the parameters"
