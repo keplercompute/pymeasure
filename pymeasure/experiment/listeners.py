@@ -108,11 +108,16 @@ class Recorder(QueueListener):
         """
         self.results = results
         handlers = []
-        for filename in results.data_filenames:
-            fh = FileHandler(filename=filename, **kwargs)
-            fh.setFormatter(results.formatter)
-            fh.setLevel(logging.NOTSET)
-            handlers.append(fh)
+
+        if self.results.output_format == 'JSON':
+            self.handle = self._json_handle
+        else:
+
+            for filename in results.data_filenames:
+                fh = FileHandler(filename=filename, **kwargs)
+                fh.setFormatter(results.formatter)
+                fh.setLevel(logging.NOTSET)
+                handlers.append(fh)
 
         super().__init__(queue, *handlers)
 
@@ -123,14 +128,20 @@ class Recorder(QueueListener):
         super().stop()
 
     def _json_handle(self, record):
-        record = json.loads(record)
+        record = json.loads(self.results.formatter.format(record))
         key = list(record.keys())[0]
         item = record[key]
 
         for file in self.results.data_filenames:
             if stat(file).st_size == 0:
                 with open(file, 'w') as f:
-                    json.dump(record, f)
+                    extant = {key: {}}
+                    for column, value in item.items():
+                        if not isinstance(value, (list,tuple)):
+                            extant[key][column] = [value, ]
+                        else:
+                            extant[key] = item
+                    json.dump(extant, f)
 
             else:
                 with open(file, 'r') as f:
@@ -144,7 +155,7 @@ class Recorder(QueueListener):
                     extant[key] = item
 
                 with open(file, 'w') as f:
-                    json.dump(extant,f)
+                    json.dump(extant, f)
 
 
 
