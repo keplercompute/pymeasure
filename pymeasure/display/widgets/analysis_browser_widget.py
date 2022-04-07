@@ -24,16 +24,16 @@
 
 import logging
 
-from ..browser import Browser
+from ..browser import AnalysisBrowser
 from ..Qt import QtGui
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-class BrowserWidget(QtGui.QWidget):
+class AnalysisBrowserWidget(QtGui.QWidget):
     """
-    Widget wrapper for :class:`Browser<pymeasure.display.browser.Browser>` class
+    Widget wrapper for :class:`AnalysisBrowser<pymeasure.display.browser.AnalysisBrowser>` class
     """
     def __init__(self, *args, parent=None):
         super().__init__(parent)
@@ -42,17 +42,9 @@ class BrowserWidget(QtGui.QWidget):
         self._layout()
 
     def _setup_ui(self):
-        self.browser = Browser(*self.browser_args, parent=self)
-        self.clear_button = QtGui.QPushButton('Clear all', self)
-        self.clear_button.setEnabled(False)
-        self.clear_unfinished_button = QtGui.QPushButton('Clear unfinished', self)
-        self.clear_unfinished_button.setEnabled(False)
-        self.hide_button = QtGui.QPushButton('Hide all', self)
-        self.hide_button.setEnabled(False)
-        self.show_button = QtGui.QPushButton('Show all', self)
-        self.show_button.setEnabled(False)
-        self.open_button = QtGui.QPushButton('Open', self)
-        self.open_button.setEnabled(True)
+        self.analysis_browser = AnalysisBrowser(*self.browser_args, parent=self)
+        self.pause_button = QtGui.QPushButton('Pause Analysis', self)
+        self.pause_button.setEnabled(False)
 
     def _layout(self):
         vbox = QtGui.QVBoxLayout(self)
@@ -61,13 +53,12 @@ class BrowserWidget(QtGui.QWidget):
         hbox = QtGui.QHBoxLayout()
         hbox.setSpacing(10)
         hbox.setContentsMargins(-1, 6, -1, 6)
-        hbox.addWidget(self.show_button)
-        hbox.addWidget(self.hide_button)
-        hbox.addWidget(self.clear_button)
-        hbox.addWidget(self.clear_unfinished_button)
+        label = QtGui.QLabel(self)
+        label.setText("Analysis Queue")
+        hbox.addWidget(label)
         hbox.addStretch()
-        hbox.addWidget(self.open_button)
+        hbox.addWidget(self.pause_button)
 
         vbox.addLayout(hbox)
-        vbox.addWidget(self.browser)
+        vbox.addWidget(self.analysis_browser)
         self.setLayout(vbox)

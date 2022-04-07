@@ -28,12 +28,11 @@ import os
 import platform
 import subprocess
 
-
 import pyqtgraph as pg
 
 from .browser import BrowserItem
 from .curves import ResultsCurve
-from .manager import Manager, Experiment
+from .manager import Manager, Experiment, AnalyzerManager, Analysis
 from .Qt import QtCore, QtGui
 from .widgets import (
     PlotWidget,
@@ -45,6 +44,7 @@ from .widgets import (
     ImageWidget,
     DirectoryLineEdit,
     EstimatorWidget,
+    AnalysisBrowserWidget,
 )
 from ..experiment import Results, Procedure
 
@@ -263,6 +263,17 @@ class ManagedWindowBase(QtGui.QMainWindow):
         self.browser.customContextMenuRequested.connect(self.browser_item_menu)
         self.browser.itemChanged.connect(self.browser_item_changed)
 
+        self.analysis_browser_widget = AnalysisBrowserWidget(
+            self.procedure_class,
+            self.displays,
+            [],  # This value will be patched by subclasses, if needed
+            parent=self
+        )
+        self.analysis_browser_widget.pause_button.clicked.connect(self.pause_analysis)
+        self.analysis_browser = self.analysis_browser_widget.analysis_browser
+
+        self.analysis_browser.itemChanged.connect(self.analysis_browser_item_changed)
+
         self.inputs = InputsWidget(
             self.procedure_class,
             self.inputs,
@@ -280,6 +291,17 @@ class ManagedWindowBase(QtGui.QMainWindow):
         self.manager.finished.connect(self.finished)
         self.manager.failed.connect(self.failed)
         self.manager.log.connect(self.log.handle)
+
+        self.analysis_manager = AnalyzerManager(self.browser,
+                                                port=self.port,
+                                                log_level=self.log_level,
+                                                parent=self)
+        # self.manager.abort_returned.connect(self.abort_returned)
+        # self.manager.queued.connect(self.queued)
+        # self.manager.running.connect(self.running)
+        # self.manager.finished.connect(self.finished)
+        # self.manager.failed.connect(self.failed)
+        # self.manager.log.connect(self.log.handle)
 
         if self.use_sequencer:
             self.sequencer = SequencerWidget(
@@ -355,7 +377,10 @@ class ManagedWindowBase(QtGui.QMainWindow):
 
         splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
         splitter.addWidget(self.tabs)
-        splitter.addWidget(self.browser_widget)
+        browser_splitter = QtGui.QSplitter(QtCore.Qt.Horizontal)
+        browser_splitter.addWidget(self.browser_widget)
+        browser_splitter.addWidget(self.analysis_browser_widget)
+        splitter.addWidget(browser_splitter)
 
         vbox = QtGui.QVBoxLayout(self.main)
         vbox.setSpacing(0)
@@ -371,6 +396,13 @@ class ManagedWindowBase(QtGui.QMainWindow):
             self.abort()
 
         self.close()
+
+    def analysis_browser_item_changed(self, item, column):
+        """Relic of browser_item_changed. We don't update the plot for analyses so this is a place holder
+        """
+        if column == 0:
+            state = item.checkState(0)
+            analysis = self.analysis_manager.analyses.with_browser_item(item)
 
     def browser_item_changed(self, item, column):
         if column == 0:
@@ -421,6 +453,9 @@ class ManagedWindowBase(QtGui.QMainWindow):
                 lambda: self.set_parameters(experiment.procedure.parameter_objects()))
             menu.addAction(action_use)
             menu.exec_(self.browser.viewport().mapToGlobal(position))
+
+    def pause_analysis(self):
+        pass
 
     def remove_experiment(self, experiment):
         reply = QtGui.QMessageBox.question(self, 'Remove Graph',
@@ -632,7 +667,6 @@ class ManagedWindowBase(QtGui.QMainWindow):
             self.browser_widget.clear_button.setEnabled(True)
             self.browser_widget.clear_unfinished_button.setEnabled(True)
 
-
     @property
     def directory(self):
         if not self.directory_input:
@@ -710,6 +744,6 @@ class ManagedImageWindow(ManagedWindow):
 
         if "widget_list" not in kwargs:
             kwargs["widget_list"] = ()
-        kwargs["widget_list"] = kwargs["widget_list"] + (self.image_widget, )
+        kwargs["widget_list"] = kwargs["widget_list"] + (self.image_widget,)
 
         super().__init__(procedure_class, x_axis=x_axis, y_axis=y_axis, **kwargs)

@@ -126,3 +126,4 @@ class Monitor(QtCore.QThread):
                 self.log.emit(data)
 
         log.info("Monitor caught stop command")
+

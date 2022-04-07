@@ -202,13 +202,12 @@ class Analyzer(StoppableThread):
 
         self.port = port
         if not isinstance(results, Results):
-            raise ValueError("Invalid Results object during Worker construction")
+            raise ValueError("Invalid Results object during Analyzer construction")
         self.results = results
-        self.results.procedure.check_parameters()
-        self.results.procedure.status = Procedure.QUEUED
-
-        self.recorder = None
-        self.recorder_queue = Queue()
+        if self.results.procedure.status != Procedure.FINISHED:
+            raise ValueError("Trying to analyze procedure not marked as finished")
+        if self.results.procedure.routine is None:
+            raise ValueError('No analyzer routine instanced to results object')
 
         self.monitor_queue = Queue()
         if log_queue is None:
@@ -258,9 +257,8 @@ class Analyzer(StoppableThread):
             )
         except (NameError, AttributeError):
             pass  # No dumps defined
-        if topic == 'results':
-            self.recorder.handle(record)
-        elif topic == 'status' or topic == 'progress':
+
+        if topic == 'status' or topic == 'progress':
             self.monitor_queue.put((topic, record))
 
     def handle_abort(self):
@@ -274,19 +272,18 @@ class Analyzer(StoppableThread):
         self.update_status(Procedure.FAILED)
 
     def update_status(self, status):
-        self.procedure.status = status
+        self.routine.status = status
         self.emit('status', status)
 
     def shutdown(self):
-        self.procedure.shutdown()
+        self.routine.shutdown()
 
-        if self.should_stop() and self.procedure.status == Procedure.RUNNING:
+        if self.should_stop() and self.routine.status == Procedure.RUNNING:
             self.update_status(Procedure.ABORTED)
-        elif self.procedure.status == Procedure.RUNNING:
+        elif self.routine.status == Procedure.RUNNING:
             self.update_status(Procedure.FINISHED)
             self.emit('progress', 100.)
 
-        self.recorder.stop()
         self.monitor_queue.put(None)
         if self.context is not None:
             # Cleanly close down ZMQ context and associated socket
@@ -298,24 +295,18 @@ class Analyzer(StoppableThread):
     def run(self):
         log.info("Worker thread started")
 
-        self.procedure = self.results.procedure
+        self.routine = self.results.routine
 
-        self.recorder = Recorder(self.results, self.recorder_queue)
-        self.recorder.start()
+        self.routine.should_stop = self.should_stop
+        self.routine.emit = self.emit
 
-        # locals()[self.procedures_file] = __import__(self.procedures_file)
-
-        # route Procedure methods & log
-        self.procedure.should_stop = self.should_stop
-        self.procedure.emit = self.emit
-
-        log.info("Worker started running an instance of %r", self.procedure.__class__.__name__)
+        log.info("Worker started running an instance of %r", self.routine.__class__.__name__)
         self.update_status(Procedure.RUNNING)
         self.emit('progress', 0.)
 
         try:
-            self.procedure.startup()
-            self.procedure.execute()
+            self.routine.startup()
+            self.routine.execute()
         except (KeyboardInterrupt, SystemExit):
             self.handle_abort()
         except Exception:
@@ -325,8 +316,8 @@ class Analyzer(StoppableThread):
             self.stop()
 
     def __repr__(self):
-        return "<{}(port={},procedure={},should_stop={})>".format(
+        return "<{}(port={},routine={},should_stop={})>".format(
             self.__class__.__name__, self.port,
-            self.procedure.__class__.__name__,
+            self.routine.__class__.__name__,
             self.should_stop()
         )

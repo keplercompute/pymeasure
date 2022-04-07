@@ -128,6 +128,10 @@ class Recorder(QueueListener):
         super().stop()
 
     def _json_handle(self, record):
+        """Method to override the normal logging FileHandler when the record is json.
+        The json formatter returns a string for compatibility with filehandling, so the first
+        step is to re-extract the dict. Then we check various conditions. The end result is a file with a
+        single (possibly updated) dictionary of dictionaries"""
         record = json.loads(self.results.formatter.format(record))
         key = list(record.keys())[0]
         item = record[key]
