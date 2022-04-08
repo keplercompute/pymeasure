@@ -30,9 +30,9 @@ import subprocess
 
 import pyqtgraph as pg
 
-from .browser import BrowserItem, AnalysisBrowserItem
+from .browser import BrowserItem
 from .curves import ResultsCurve
-from .manager import Manager, Experiment, AnalyzerManager, Analysis
+from .manager import Manager, Experiment
 from .Qt import QtCore, QtGui
 from .widgets import (
     PlotWidget,
@@ -202,6 +202,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
                  sequencer=False,
                  sequencer_inputs=None,
                  sequence_file=None,
+                 analyzer=False,
                  inputs_in_scrollarea=False,
                  directory_input=False,
                  hide_groups=True,
@@ -218,6 +219,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
         self.use_sequencer = sequencer
         self.sequencer_inputs = sequencer_inputs
         self.sequence_file = sequence_file
+        self.use_analyzer = analyzer
         self.inputs_in_scrollarea = inputs_in_scrollarea
         self.directory_input = directory_input
         self.log = logging.getLogger(log_channel)
@@ -263,16 +265,6 @@ class ManagedWindowBase(QtGui.QMainWindow):
         self.browser.customContextMenuRequested.connect(self.browser_item_menu)
         self.browser.itemChanged.connect(self.browser_item_changed)
 
-        self.analysis_browser_widget = AnalysisBrowserWidget(
-            self.procedure_class,
-            self.displays,
-            [],  # This value will be patched by subclasses, if needed
-            parent=self
-        )
-        self.analysis_browser_widget.pause_button.clicked.connect(self.pause_analysis)
-        self.analysis_browser = self.analysis_browser_widget.analysis_browser
-
-        self.analysis_browser.itemChanged.connect(self.analysis_browser_item_changed)
 
         self.inputs = InputsWidget(
             self.procedure_class,
@@ -292,16 +284,13 @@ class ManagedWindowBase(QtGui.QMainWindow):
         self.manager.failed.connect(self.failed)
         self.manager.log.connect(self.log.handle)
 
-        self.analysis_manager = AnalyzerManager(self.analysis_browser,
-                                                port=self.port,
-                                                log_level=self.log_level,
-                                                parent=self)
-        # self.manager.abort_returned.connect(self.abort_returned)
-        # self.manager.queued.connect(self.queued)
-        # self.manager.running.connect(self.running)
-        # self.manager.finished.connect(self.finished)
-        # self.manager.failed.connect(self.failed)
-        # self.manager.log.connect(self.log.handle)
+        if self.use_analyzer:
+            self.analysis_browser_widget = AnalysisBrowserWidget(
+                self.procedure_class,
+                self.displays,
+                [],  # This value will be patched by subclasses, if needed
+                parent=self
+            )
 
         if self.use_sequencer:
             self.sequencer = SequencerWidget(
@@ -377,10 +366,14 @@ class ManagedWindowBase(QtGui.QMainWindow):
 
         splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
         splitter.addWidget(self.tabs)
-        browser_splitter = QtGui.QSplitter(QtCore.Qt.Horizontal)
-        browser_splitter.addWidget(self.browser_widget)
-        browser_splitter.addWidget(self.analysis_browser_widget)
-        splitter.addWidget(browser_splitter)
+
+        if self.use_analyzer:
+            browser_splitter = QtGui.QSplitter(QtCore.Qt.Horizontal)
+            browser_splitter.addWidget(self.browser_widget)
+            browser_splitter.addWidget(self.analysis_browser_widget)
+            splitter.addWidget(browser_splitter)
+        else:
+            splitter.addWidget(self.browser_widget)
 
         vbox = QtGui.QVBoxLayout(self.main)
         vbox.setSpacing(0)
@@ -396,13 +389,6 @@ class ManagedWindowBase(QtGui.QMainWindow):
             self.abort()
 
         self.close()
-
-    def analysis_browser_item_changed(self, item, column):
-        """Relic of browser_item_changed. We don't update the plot for analyses so this is a place holder
-        """
-        if column == 0:
-            state = item.checkState(0)
-            analysis = self.analysis_manager.analyses.with_browser_item(item)
 
     def browser_item_changed(self, item, column):
         if column == 0:
@@ -454,8 +440,6 @@ class ManagedWindowBase(QtGui.QMainWindow):
             menu.addAction(action_use)
             menu.exec_(self.browser.viewport().mapToGlobal(position))
 
-    def pause_analysis(self):
-        pass
 
     def remove_experiment(self, experiment):
         reply = QtGui.QMessageBox.question(self, 'Remove Graph',
@@ -561,10 +545,6 @@ class ManagedWindowBase(QtGui.QMainWindow):
         browser_item = BrowserItem(results, curve_color)
         return Experiment(results, curve_list, browser_item)
 
-    def new_analysis(self, results, curve_color):
-        analysis_browser_item = AnalysisBrowserItem(results, curve_color)
-        return Analysis(results, analysis_browser_item)
-
     def set_parameters(self, parameters):
         """ This method should be overwritten by the child class. The
         parameters argument is a dictionary of Parameter objects.
@@ -667,19 +647,11 @@ class ManagedWindowBase(QtGui.QMainWindow):
 
 
     def finished(self, experiment):
-        #snippet to kick off the relevant analysis if routine present in results
-        results = experiment.results
-        color = experiment.browser_item.color
-        if results.routine is not None:
-            analysis = self.new_analysis(results, color)
-            self.analysis_manager.queue(analysis)
-            self.analysis_browser_widget.pause_button.setEnabled(True)
-
 
         if not self.manager.experiments.has_next():
             self.abort_button.setEnabled(False)
             self.browser_widget.clear_button.setEnabled(True)
-            self.browser_widget.clear_unfinished_button.setEnabled(True)
+            self.browser_widget.clear_unfinished_button.setEnabled(False)
 
     @property
     def directory(self):

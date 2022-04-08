@@ -24,8 +24,9 @@
 
 import logging
 
-from ..browser import AnalysisBrowser
+from ..browser import AnalysisBrowser, AnalysisBrowserItem
 from ..Qt import QtGui
+from ..manager import AnalyzerManager, Analysis
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -37,6 +38,8 @@ class AnalysisBrowserWidget(QtGui.QWidget):
     """
     def __init__(self, *args, parent=None):
         super().__init__(parent)
+
+        self._parent = parent
         self.browser_args = args
         self._setup_ui()
         self._layout()
@@ -45,6 +48,16 @@ class AnalysisBrowserWidget(QtGui.QWidget):
         self.analysis_browser = AnalysisBrowser(*self.browser_args, parent=self)
         self.pause_button = QtGui.QPushButton('Pause Analysis', self)
         self.pause_button.setEnabled(False)
+
+        self.pause_button.clicked.connect(self.pause_analysis)
+        self._parent.manager.finished.connect(self.experiment_finished)
+
+        self.analysis_browser.itemChanged.connect(self.analysis_browser_item_changed)
+
+        self.analysis_manager = AnalyzerManager(self.analysis_browser,
+                                                port=self._parent.port,
+                                                log_level=self._parent.log_level,
+                                                parent=self._parent)
 
     def _layout(self):
         vbox = QtGui.QVBoxLayout(self)
@@ -62,3 +75,26 @@ class AnalysisBrowserWidget(QtGui.QWidget):
         vbox.addLayout(hbox)
         vbox.addWidget(self.analysis_browser)
         self.setLayout(vbox)
+
+    def analysis_browser_item_changed(self, item, column):
+        """Relic of browser_item_changed. We don't update the plot for analyses so this is a place holder
+        """
+        if column == 0:
+            state = item.checkState(0)
+            analysis = self.analysis_manager.analyses.with_browser_item(item)
+
+    def pause_analysis(self):
+        pass
+
+    def new_analysis(self, results, curve_color):
+        analysis_browser_item = AnalysisBrowserItem(results, curve_color)
+        return Analysis(results, analysis_browser_item)
+
+    def experiment_finished(self, experiment):
+        # snippet to kick off the relevant analysis if routine present in results
+        results = experiment.results
+        color = experiment.browser_item.color
+        if results.routine is not None:
+            analysis = self.new_analysis(results, color)
+            self.analysis_manager.queue(analysis)
+            self.pause_button.setEnabled(True)

@@ -118,6 +118,7 @@ class MainWindow(ManagedWindow):
             y_axis='Random Number',
             sequencer=True,
             sequence_file="gui_sequencer_example_sequence.txt",
+            analyzer=True,
             port=None
         )
         self.setWindowTitle('GUI Example')
