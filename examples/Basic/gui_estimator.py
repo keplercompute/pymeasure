@@ -17,6 +17,7 @@ from time import sleep,time_ns
 from datetime import datetime, timedelta
 
 from pymeasure.experiment import Procedure, IntegerParameter, Parameter, FloatParameter, unique_filename
+from pymeasure.experiment import Routine
 from pymeasure.experiment import Results
 from pymeasure.display.Qt import QtGui
 from pymeasure.display.windows import ManagedWindow
@@ -29,7 +30,7 @@ log.addHandler(logging.NullHandler())
 class TestProcedure(Procedure):
 
     iterations = IntegerParameter('Loop Iterations', default=100)
-    delay = FloatParameter('Delay Time', units='s', default=0.2)
+    delay = FloatParameter('Delay Time', units='s', default=0.02)
     seed = Parameter('Random Seed', default='12345')
 
     DATA_COLUMNS = ['Iteration', 'Random Number']
@@ -126,7 +127,7 @@ class MainWindow(ManagedWindow):
 
         if procedure is None:
             procedure = self.make_procedure()
-        results = Results(procedure, filename, output_format='JSON')
+        results = Results(procedure, filename, routine=Routine(), output_format='JSON')
         experiment = self.new_experiment(results)
 
         self.manager.queue(experiment)

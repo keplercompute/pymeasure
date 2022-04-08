@@ -314,13 +314,13 @@ class Analysis(QtCore.QObject):
     :param browser_item: :class:`.BrowserItem` object
     """
 
-    def __init__(self, results, browser_item, parent=None):
+    def __init__(self, results, analysis_browser_item, parent=None):
         super().__init__(parent)
         self.results = results
         self.data_filename = self.results.data_filename
         self.procedure = self.results.procedure
         self.analysis = self.results.routine
-        self.browser_item = browser_item
+        self.browser_item = analysis_browser_item
 
 
 class AnalysisQueue(QtCore.QObject):
@@ -440,6 +440,7 @@ class AnalyzerManager(QtCore.QObject):
         """
 
         self.browser.add(experiment)
+        self.analyses.append(experiment)
 
     def queue(self, analysis):
         """ Adds an analysis to the queue.
@@ -495,7 +496,7 @@ class AnalyzerManager(QtCore.QObject):
             raise ValueError('Monitor did not exit properly')
         else:
             self._monitor.terminate()
-        del self._worker
+        del self._analyzer
         self._monitor.wait()
         del self._monitor
         self._worker = None
@@ -519,9 +520,6 @@ class AnalyzerManager(QtCore.QObject):
         experiment = self._running_analysis
         self._clean_up()
         experiment.browser_item.setProgress(100.)
-        for curve in experiment.curve_list:
-            if curve:
-                curve.update_data()
         self.finished.emit(experiment)
         if self._is_continuous:  # Continue running procedures
             self.next()

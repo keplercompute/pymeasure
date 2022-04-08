@@ -30,7 +30,7 @@ import subprocess
 
 import pyqtgraph as pg
 
-from .browser import BrowserItem
+from .browser import BrowserItem, AnalysisBrowserItem
 from .curves import ResultsCurve
 from .manager import Manager, Experiment, AnalyzerManager, Analysis
 from .Qt import QtCore, QtGui
@@ -292,7 +292,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
         self.manager.failed.connect(self.failed)
         self.manager.log.connect(self.log.handle)
 
-        self.analysis_manager = AnalyzerManager(self.browser,
+        self.analysis_manager = AnalyzerManager(self.analysis_browser,
                                                 port=self.port,
                                                 log_level=self.log_level,
                                                 parent=self)
@@ -561,6 +561,10 @@ class ManagedWindowBase(QtGui.QMainWindow):
         browser_item = BrowserItem(results, curve_color)
         return Experiment(results, curve_list, browser_item)
 
+    def new_analysis(self, results, curve_color):
+        analysis_browser_item = AnalysisBrowserItem(results, curve_color)
+        return Analysis(results, analysis_browser_item)
+
     def set_parameters(self, parameters):
         """ This method should be overwritten by the child class. The
         parameters argument is a dictionary of Parameter objects.
@@ -657,11 +661,21 @@ class ManagedWindowBase(QtGui.QMainWindow):
         if self.manager.experiments.has_next():
             self.abort_button.setText("Resume")
             self.abort_button.setEnabled(True)
+            self.browser_widget.clear_unfinished_button.setEnabled(True)
         else:
             self.browser_widget.clear_button.setEnabled(True)
-            self.browser_widget.clear_unfinished_button.setEnabled(True)
+
 
     def finished(self, experiment):
+        #snippet to kick off the relevant analysis if routine present in results
+        results = experiment.results
+        color = experiment.browser_item.color
+        if results.routine is not None:
+            analysis = self.new_analysis(results, color)
+            self.analysis_manager.queue(analysis)
+            self.analysis_browser_widget.pause_button.setEnabled(True)
+
+
         if not self.manager.experiments.has_next():
             self.abort_button.setEnabled(False)
             self.browser_widget.clear_button.setEnabled(True)

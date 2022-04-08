@@ -224,10 +224,11 @@ class Results:
     LINE_BREAK = "\n"
     CHUNK_SIZE = 1000
 
-    def __init__(self, procedure, data_filename, output_format='CSV'):
+    def __init__(self, procedure, data_filename, routine=None, output_format='CSV'):
         if not isinstance(procedure, Procedure):
             raise ValueError("Results require a Procedure object")
         self.procedure = procedure
+        self.routine = routine
         self.procedure_class = procedure.__class__
         self.parameters = procedure.parameter_objects()
         self.output_format = output_format

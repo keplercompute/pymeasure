@@ -39,8 +39,9 @@ class BrowserItem(QtGui.QTreeWidgetItem):
     def __init__(self, results, color, parent=None):
         super().__init__(parent)
 
+        self.color = color
         pixelmap = QtGui.QPixmap(24, 24)
-        pixelmap.fill(color)
+        pixelmap.fill(self.color)
         self.setIcon(0, QtGui.QIcon(pixelmap))
         self.setFlags(self.flags() | QtCore.Qt.ItemIsUserCheckable)
         self.setCheckState(0, QtCore.Qt.Checked)
