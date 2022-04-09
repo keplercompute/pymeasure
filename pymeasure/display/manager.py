@@ -366,6 +366,26 @@ class AnalysisQueue(QtCore.QObject):
                 return analysis
         raise StopIteration("There are no queued analysiss")
 
+    def last_to_fail(self):
+        failures = []
+        conditions = (Procedure.FAILED, Procedure.ABORTED)
+        if len(self.queue) == 1:
+            if self.queue[0].analysis.status in conditions:
+                analysis = self.queue[0]
+                return analysis
+        else:
+            for i, analysis in enumerate(self.queue):
+                if analysis.analysis.status in (Procedure.FAILED, Procedure.ABORTED):
+                    failures.append(i)
+                if analysis.analysis.status == Procedure.QUEUED:
+                    if i-1 in failures:
+                        last = self.queue[i-1]
+                        return analysis
+        raise StopIteration("No recent failures/aborts encountered")
+
+
+
+
     def has_next(self):
         """ Returns True if another item is on the queue
         """
@@ -504,19 +524,19 @@ class AnalyzerManager(QtCore.QObject):
         log.debug("Manager has cleaned up after the Worker")
 
     def _failed(self):
-        log.debug("Manager's running experiment has failed")
+        log.debug("Manager's running analysis has failed")
         experiment = self._running_analysis
         self._clean_up()
         self.failed.emit(experiment)
 
     def _abort_returned(self):
-        log.debug("Manager's running experiment has returned after an abort")
+        log.debug("Manager's running analysis has returned after an abort")
         experiment = self._running_analysis
         self._clean_up()
         self.abort_returned.emit(experiment)
 
     def _finish(self):
-        log.debug("Manager's running experiment has finished")
+        log.debug("Manager's running analysis has finished")
         experiment = self._running_analysis
         self._clean_up()
         experiment.browser_item.setProgress(100.)
@@ -531,12 +551,19 @@ class AnalyzerManager(QtCore.QObject):
         self._is_continuous = True
         self.next()
 
+    def retry(self):
+        self._start_on_add = True
+        self._is_continuous = True
+        last = self.last_to_fail()
+        last.analysis.status = Procedure.QUEUED
+        self.next()
+
     def abort(self):
-        """ Aborts the currently running Experiment, but raises an exception if
+        """ Aborts the currently running Analysis, but raises an exception if
         there is no running experiment
         """
         if not self.is_running():
-            raise Exception("Attempting to abort when no experiment "
+            raise Exception("Attempting to abort when no analysis "
                             "is running")
         else:
             self._start_on_add = False

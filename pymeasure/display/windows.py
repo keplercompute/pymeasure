@@ -191,6 +191,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
         or disabled/grayed-out (False) when the group conditions are not met.
     """
 
+
     def __init__(self,
                  procedure_class,
                  widget_list=(),
@@ -387,6 +388,9 @@ class ManagedWindowBase(QtGui.QMainWindow):
     def quit(self, evt=None):
         if self.manager.is_running():
             self.abort()
+            if self.use_analyzer:
+                if self.analysis_browser_widget.analysis_manager.is_running():
+                    self.analysis_browser_widget.abort_analysis()
 
         self.close()
 

@@ -262,8 +262,8 @@ class Analyzer(StoppableThread):
             self.monitor_queue.put((topic, record))
 
     def handle_abort(self):
-        log.exception("User stopped Worker execution prematurely")
-        self.update_status(Procedure.ABORTED)
+        log.exception("User stopped Analyzer execution prematurely")
+        self.update_status(Procedure.QUEUED)
 
     def handle_error(self):
         log.exception("Worker caught an error on %r", self.procedure)
@@ -296,6 +296,7 @@ class Analyzer(StoppableThread):
         log.info("Worker thread started")
 
         self.routine = self.results.routine
+        self.routine.procedure = self.results.procedure
 
         self.routine.should_stop = self.should_stop
         self.routine.emit = self.emit

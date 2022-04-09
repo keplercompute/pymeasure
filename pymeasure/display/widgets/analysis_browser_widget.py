@@ -46,10 +46,14 @@ class AnalysisBrowserWidget(QtGui.QWidget):
 
     def _setup_ui(self):
         self.analysis_browser = AnalysisBrowser(*self.browser_args, parent=self)
-        self.pause_button = QtGui.QPushButton('Pause Analysis', self)
-        self.pause_button.setEnabled(False)
+        self.abort_button = QtGui.QPushButton('Abort Analysis', self)
+        self.abort_button.setEnabled(False)
+        self.continue_button = QtGui.QPushButton('Continue Analysis', self)
+        self.continue_button.setEnabled(False)
 
-        self.pause_button.clicked.connect(self.pause_analysis)
+        self.abort_button.clicked.connect(self.abort_analysis)
+        self.continue_button.clicked.connect(self.continue_analysis)
+
         self._parent.manager.finished.connect(self.experiment_finished)
 
         self.analysis_browser.itemChanged.connect(self.analysis_browser_item_changed)
@@ -69,8 +73,9 @@ class AnalysisBrowserWidget(QtGui.QWidget):
         label = QtGui.QLabel(self)
         label.setText("Analysis Queue")
         hbox.addWidget(label)
+        hbox.addWidget(self.continue_button)
         hbox.addStretch()
-        hbox.addWidget(self.pause_button)
+        hbox.addWidget(self.abort_button)
 
         vbox.addLayout(hbox)
         vbox.addWidget(self.analysis_browser)
@@ -83,8 +88,36 @@ class AnalysisBrowserWidget(QtGui.QWidget):
             state = item.checkState(0)
             analysis = self.analysis_manager.analyses.with_browser_item(item)
 
-    def pause_analysis(self):
-        pass
+    def abort_analysis(self):
+        self.abort_button.setEnabled(False)
+        self.abort_button.setText("Restart Aborted/Failed")
+        self.abort_button.clicked.disconnect()
+        self.abort_button.clicked.connect(self.resume)
+        try:
+            self.analysis_manager.abort()
+        except:  # noqa
+            log.error('Failed to abort experiment', exc_info=True)
+            self.abort_button.setText("Abort Analysis")
+            self.abort_button.clicked.disconnect()
+            self.abort_button.clicked.connect(self.abort_analysis())
+
+    def resume(self):
+        self.abort_button.setText("Abort Analysis")
+        self.abort_button.clicked.disconnect()
+        self.abort_button.clicked.connect(self.abort)
+        if self.analysis_manager.experiments.has_next():
+            self.analysis_manager.retry()
+        else:
+            self.abort_button.setEnabled(False)
+
+    def continue_analysis(self):
+        self.abort_button.setText("Abort Analysis")
+        self.abort_button.clicked.disconnect()
+        self.abort_button.clicked.connect(self.abort)
+        if self.analysis_manager.experiments.has_next():
+            self.analysis_manager.resume()
+        else:
+            self.abort_button.setEnabled(False)
 
     def new_analysis(self, results, curve_color):
         analysis_browser_item = AnalysisBrowserItem(results, curve_color)
@@ -97,4 +130,4 @@ class AnalysisBrowserWidget(QtGui.QWidget):
         if results.routine is not None:
             analysis = self.new_analysis(results, color)
             self.analysis_manager.queue(analysis)
-            self.pause_button.setEnabled(True)
+            self.abort_button.setEnabled(True)
