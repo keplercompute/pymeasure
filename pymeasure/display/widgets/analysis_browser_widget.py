@@ -63,6 +63,8 @@ class AnalysisBrowserWidget(QtGui.QWidget):
                                                 log_level=self._parent.log_level,
                                                 parent=self._parent)
 
+        self.analysis_manager.finished.connect(self.finished)
+
     def _layout(self):
         vbox = QtGui.QVBoxLayout(self)
         vbox.setSpacing(0)
@@ -99,12 +101,12 @@ class AnalysisBrowserWidget(QtGui.QWidget):
             log.error('Failed to abort experiment', exc_info=True)
             self.abort_button.setText("Abort Analysis")
             self.abort_button.clicked.disconnect()
-            self.abort_button.clicked.connect(self.abort_analysis())
+            self.abort_button.clicked.connect(self.abort_analysis)
 
     def resume(self):
         self.abort_button.setText("Abort Analysis")
         self.abort_button.clicked.disconnect()
-        self.abort_button.clicked.connect(self.abort)
+        self.abort_button.clicked.connect(self.abort_analysis)
         if self.analysis_manager.experiments.has_next():
             self.analysis_manager.retry()
         else:
@@ -113,7 +115,7 @@ class AnalysisBrowserWidget(QtGui.QWidget):
     def continue_analysis(self):
         self.abort_button.setText("Abort Analysis")
         self.abort_button.clicked.disconnect()
-        self.abort_button.clicked.connect(self.abort)
+        self.abort_button.clicked.connect(self.abort_analysis)
         if self.analysis_manager.experiments.has_next():
             self.analysis_manager.resume()
         else:
@@ -131,3 +133,9 @@ class AnalysisBrowserWidget(QtGui.QWidget):
             analysis = self.new_analysis(results, color)
             self.analysis_manager.queue(analysis)
             self.abort_button.setEnabled(True)
+
+    def finished(self):
+        self.abort_button.setText("Abort Analysis")
+        self.abort_button.clicked.disconnect()
+        self.abort_button.clicked.connect(self.abort_analysis)
+        self.abort_button.setEnabled(False)
