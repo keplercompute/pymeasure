@@ -61,7 +61,6 @@ class ResultsCurve(pg.PlotDataItem):
         if self.force_reload:
             self.results.reload()
         data = self.results.data  # get the current snapshot
-
         # Set x-y data
         self.setData(data[self.x], data[self.y])
 

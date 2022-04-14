@@ -204,6 +204,7 @@ class JSONFormatter(logging.Formatter):
         :type record: dict
         :return: a string
         """
+
         return json.dumps({self.key: record}, indent=1)
 
 

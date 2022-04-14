@@ -44,9 +44,9 @@ class TestProcedure(Procedure):
         iss = []
         tands = []
         for i in range(self.iterations):
-            iss.append(i)
-            tands.append(random.random())
-            log.debug("Produced numbers: %s" % tands[-1])
+            iss=i
+            tands=random.random()
+            log.debug("Produced numbers: %s" % tands)
 
             self.emit('progress', 100 * i / self.iterations)
             sleep(self.delay)
@@ -54,11 +54,11 @@ class TestProcedure(Procedure):
                 log.warning("Catch stop command in procedure")
                 break
 
-        data = {
-            'Iteration': iss,
-            'Random Number': tands
-        }
-        self.emit('results', data)
+            data = {
+                'Iteration': iss,
+                'Random Number': tands
+            }
+            self.emit('results', data)
 
     def get_estimates(self, sequence_length=None, sequence=None):
         """ Function that returns estimates for the EstimatorWidget. If this function

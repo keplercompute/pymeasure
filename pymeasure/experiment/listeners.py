@@ -27,6 +27,7 @@ from logging import StreamHandler, FileHandler
 
 from os import stat
 import json
+import pandas as pd
 
 from ..log import QueueListener
 from ..thread import StoppableThread
