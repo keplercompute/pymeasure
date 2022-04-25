@@ -32,7 +32,7 @@ try:
     clr.AddReference('mcl_SolidStateSwitch_NET45')
     from mcl_SolidStateSwitch_NET45 import USB_Digital_Switch
 except:
-    pass
+    raise ImportError("""Can't import USB_Digital_Switch, can't find DLL""")
 
 
 from .adapter import Adapter
