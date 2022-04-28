@@ -440,9 +440,10 @@ class Results:
             # Data has not been read
             try:
                 self.reload()
-            except Exception:
-                # Empty dataframe
+            except Exception as e:
                 self._data = pd.DataFrame(columns=self.procedure.DATA_COLUMNS)
+                # Empty dataframe
+
         else:  # Concatenate additional data, if any, to already loaded data
             if self.output_format == 'JSON':
                 self.reload()
@@ -473,12 +474,21 @@ class Results:
         any changes in the comments
         """
         if self.output_format == 'JSON':
-            with open(self.data_filename) as f:
-                chunk = json.load(f)
-            keys = list(chunk.keys())
-            if len(keys) != 1:
-                raise ValueError('Trying to load a non-JSON file as a JSON file')
-            self._data = pd.DataFrame(chunk[keys[0]])
+            self.old_data = self._data
+            with open(self.data_filename,'r') as f:
+                if len(f.readlines()) != 0:
+                    f.seek(0)
+                    chunk = json.load(f)
+                else:
+                    chunk = None
+            if chunk is not None:
+                keys = list(chunk.keys())
+                now = chunk[keys[0]]
+                if len(keys) != 1:
+                    raise ValueError('Trying to load a non-JSON file as a JSON file')
+                self._data = pd.DataFrame(now)
+            else:
+                self._data = pd.DataFrame(columns=self.procedure.DATA_COLUMNS)
         else:
             chunks = pd.read_csv(
                 self.data_filename,

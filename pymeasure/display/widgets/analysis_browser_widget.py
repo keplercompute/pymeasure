@@ -107,7 +107,7 @@ class AnalysisBrowserWidget(QtGui.QWidget):
         self.abort_button.setText("Abort Analysis")
         self.abort_button.clicked.disconnect()
         self.abort_button.clicked.connect(self.abort_analysis)
-        if self.analysis_manager.experiments.has_next():
+        if self.analysis_manager.analyses.has_next():
             self.analysis_manager.retry()
         else:
             self.abort_button.setEnabled(False)
