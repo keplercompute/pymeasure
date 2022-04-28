@@ -44,6 +44,7 @@ SAFE_FUNCTIONS = {
     'bool': bool,
     'arange': numpy.arange,
     'linspace': numpy.linspace,
+    'logspace': numpy.logspace,
     'arccos': numpy.arccos,
     'arcsin': numpy.arcsin,
     'arctan': numpy.arctan,
