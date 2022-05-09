@@ -134,7 +134,8 @@ class AnalysisBrowserWidget(QtGui.QWidget):
             self.analysis_manager.queue(analysis)
             self.abort_button.setEnabled(True)
 
-    def finished(self):
+    def finished(self, analysis):
+        self.analysis_manager.remove(analysis)
         self.abort_button.setText("Abort Analysis")
         self.abort_button.clicked.disconnect()
         self.abort_button.clicked.connect(self.abort_analysis)
