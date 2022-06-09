@@ -205,8 +205,8 @@ class Analyzer(StoppableThread):
             raise ValueError("Invalid Results object during Analyzer construction")
         self.results = results
         self.procedure = results.procedure
-        if self.procedure.status != Procedure.FINISHED:
-            raise ValueError("Trying to analyze procedure not marked as finished")
+        #if self.procedure.status != Procedure.FINISHED:
+        #    raise ValueError("Trying to analyze procedure not marked as finished")
         if self.results.routine is None:
             raise ValueError('No analyzer routine instanced to results object')
 

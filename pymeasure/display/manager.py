@@ -133,6 +133,9 @@ class Manager(QtCore.QObject):
     abort_returned = QtCore.QSignal(object)
     log = QtCore.QSignal(object)
 
+    # Signal to trigger other features. Analyses are the key one
+    progress_updated = QtCore.QSignal(object)
+
     def __init__(self, widget_list, browser, port=5888, log_level=logging.INFO, parent=None):
         super().__init__(parent)
 
@@ -161,6 +164,11 @@ class Manager(QtCore.QObject):
     def _update_progress(self, progress):
         if self.is_running():
             self._running_experiment.browser_item.setProgress(progress)
+
+            #hook to trigger responses to progress updated
+            if progress > 0:
+                experiment = self._running_experiment
+                self.progress_updated.emit(experiment)
 
     def _update_status(self, status):
         if self.is_running():

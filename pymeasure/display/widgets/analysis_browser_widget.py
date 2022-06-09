@@ -54,7 +54,9 @@ class AnalysisBrowserWidget(QtGui.QWidget):
         self.abort_button.clicked.connect(self.abort_analysis)
         self.continue_button.clicked.connect(self.continue_analysis)
 
-        self._parent.manager.finished.connect(self.experiment_finished)
+        self._parent.manager.finished.connect(self.queue_analysis)
+        self._parent.manager.abort_returned.connect(self.aborted_queue_analysis)
+        self._parent.manager.progress_updated.connect(self.updated_queue_analysis)
 
         self.analysis_browser.itemChanged.connect(self.analysis_browser_item_changed)
 
@@ -125,7 +127,7 @@ class AnalysisBrowserWidget(QtGui.QWidget):
         analysis_browser_item = AnalysisBrowserItem(results, curve_color)
         return Analysis(results, analysis_browser_item)
 
-    def experiment_finished(self, experiment):
+    def queue_analysis(self, experiment):
         # snippet to kick off the relevant analysis if routine present in results
         results = experiment.results
         color = experiment.browser_item.color
@@ -133,6 +135,20 @@ class AnalysisBrowserWidget(QtGui.QWidget):
             analysis = self.new_analysis(results, color)
             self.analysis_manager.queue(analysis)
             self.abort_button.setEnabled(True)
+
+    def aborted_queue_analysis(self, experiment):
+        results = experiment.results
+        if results.routine is not None:
+            if results.routine.run_after_abort:
+                self.queue_analysis(experiment)
+
+    def updated_queue_analysis(self, experiment):
+        results = experiment.results
+        print(results)
+        print(results.routine.run_after_progress)
+        if results.routine is not None:
+            if results.routine.run_after_progress:
+                self.queue_analysis(experiment)
 
     def finished(self, analysis):
         self.analysis_manager.remove(analysis)
