@@ -82,8 +82,7 @@ class Routine:
         execution the shutdown method will always be run following this method.
         This includes when Exceptions are raised.
         """
-        print('performing Analysis of data}')
-        log.info('And I can log in routine.execute')
+        log.info('Performing Analysis of data')
         pass
 
     def shutdown(self):

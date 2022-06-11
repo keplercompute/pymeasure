@@ -135,8 +135,7 @@ class Worker(StoppableThread):
 
     def shutdown(self):
         self.procedure.shutdown()
-
-        if self.should_stop() and self.procedure.status == Procedure.RUNNING:
+        if self.should_stop(): #and self.procedure.status == Procedure.RUNNING:
             self.update_status(Procedure.ABORTED)
         elif self.procedure.status == Procedure.RUNNING:
             self.update_status(Procedure.FINISHED)
@@ -204,7 +203,6 @@ class Analyzer(StoppableThread):
         if not isinstance(results, Results):
             raise ValueError("Invalid Results object during Analyzer construction")
         self.results = results
-        self.procedure = results.procedure
         #if self.procedure.status != Procedure.FINISHED:
         #    raise ValueError("Trying to analyze procedure not marked as finished")
         if self.results.routine is None:
@@ -267,7 +265,7 @@ class Analyzer(StoppableThread):
         self.update_status(Procedure.QUEUED)
 
     def handle_error(self):
-        log.exception("Worker caught an error on %r", self.procedure)
+        log.exception("Worker caught an error on %r", self.routine)
         traceback_str = traceback.format_exc()
         self.emit('error', traceback_str)
         self.update_status(Procedure.FAILED)
@@ -282,8 +280,13 @@ class Analyzer(StoppableThread):
         if self.should_stop() and self.routine.status == Procedure.RUNNING:
             self.update_status(Procedure.ABORTED)
         elif self.routine.status == Procedure.RUNNING:
-            self.update_status(Procedure.FINISHED)
-            self.emit('progress', 100.)
+            if self.routine.procedure.status == Procedure.RUNNING:
+                self.emit('progress', 100.)
+                self.update_status(Procedure.FINISHED)
+                self.update_status(Procedure.QUEUED)
+            else:
+                self.update_status(Procedure.FINISHED)
+
 
         self.monitor_queue.put(None)
         if self.context is not None:
@@ -294,7 +297,7 @@ class Analyzer(StoppableThread):
             self.context.term()
 
     def run(self):
-        log.info("Worker thread started")
+        log.info("Analyzer thread started")
 
         self.routine = self.results.routine
         self.routine.procedure = self.results.procedure

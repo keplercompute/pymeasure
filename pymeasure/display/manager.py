@@ -419,13 +419,13 @@ class AnalyzerManager(QtCore.QObject):
     """
     _is_continuous = True
     _start_on_add = True
-    queued = QtCore.QSignal(object)
-    running = QtCore.QSignal(object)
-    finished = QtCore.QSignal(object)
-    failed = QtCore.QSignal(object)
-    aborted = QtCore.QSignal(object)
-    abort_returned = QtCore.QSignal(object)
-    log = QtCore.QSignal(object)
+    queued_am = QtCore.QSignal(object)
+    running_am = QtCore.QSignal(object)
+    finished_am = QtCore.QSignal(object)
+    failed_am = QtCore.QSignal(object)
+    aborted_am = QtCore.QSignal(object)
+    abort_returned_am = QtCore.QSignal(object)
+    log_am = QtCore.QSignal(object)
 
     def __init__(self, browser, port=5888, log_level=logging.INFO, parent=None):
         super().__init__(parent)
@@ -461,7 +461,7 @@ class AnalyzerManager(QtCore.QObject):
             self._running_analysis.browser_item.setStatus(status)
 
     def _update_log(self, record):
-        self.log.emit(record)
+        self.log_am.emit(record)
 
     def load(self, experiment):
         """ Load a previously executed Experiment
@@ -474,7 +474,7 @@ class AnalyzerManager(QtCore.QObject):
         """ Adds an analysis to the queue.
         """
         self.load(analysis)
-        self.queued.emit(analysis)
+        self.queued_am.emit(analysis)
         if self._start_on_add and not self.is_running():
             self.next()
 
@@ -513,7 +513,7 @@ class AnalyzerManager(QtCore.QObject):
 
     def _running(self):
         if self.is_running():
-            self.running.emit(self._running_analysis)
+            self.running_am.emit(self._running_analysis)
 
     def _clean_up(self):
         self._analyzer.join()
@@ -535,20 +535,20 @@ class AnalyzerManager(QtCore.QObject):
         log.debug("Manager's running analysis has failed")
         experiment = self._running_analysis
         self._clean_up()
-        self.failed.emit(experiment)
+        self.failed_am.emit(experiment)
 
     def _abort_returned(self):
         log.debug("Manager's running analysis has returned after an abort")
         experiment = self._running_analysis
         self._clean_up()
-        self.abort_returned.emit(experiment)
+        self.abort_returned_am.emit(experiment)
 
     def _finish(self):
         log.debug("Manager's running analysis has finished")
         experiment = self._running_analysis
         self._clean_up()
         experiment.browser_item.setProgress(100.)
-        self.finished.emit(experiment)
+        self.finished_am.emit(experiment)
         if self._is_continuous:  # Continue running procedures
             self.next()
 
@@ -579,4 +579,4 @@ class AnalyzerManager(QtCore.QObject):
 
             self._analyzer.stop()
 
-            self.aborted.emit(self._running_analysis)
+            self.aborted_am.emit(self._running_analysis)

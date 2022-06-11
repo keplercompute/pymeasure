@@ -65,7 +65,7 @@ class AnalysisBrowserWidget(QtGui.QWidget):
                                                 log_level=self._parent.log_level,
                                                 parent=self._parent)
 
-        self.analysis_manager.finished.connect(self.finished)
+        self.analysis_manager.finished_am.connect(self.finished)
 
     def _layout(self):
         vbox = QtGui.QVBoxLayout(self)
@@ -144,8 +144,6 @@ class AnalysisBrowserWidget(QtGui.QWidget):
 
     def updated_queue_analysis(self, experiment):
         results = experiment.results
-        print(results)
-        print(results.routine.run_after_progress)
         if results.routine is not None:
             if results.routine.run_after_progress:
                 self.queue_analysis(experiment)
