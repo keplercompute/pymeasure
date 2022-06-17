@@ -35,6 +35,7 @@ from string import Formatter
 import pandas as pd
 
 import json
+from time import sleep
 
 from .procedure import Procedure, UnknownProcedure
 
@@ -475,12 +476,22 @@ class Results:
         """
         if self.output_format == 'JSON':
             self.old_data = self._data
-            with open(self.data_filename,'r') as f:
-                if len(f.readlines()) != 0:
-                    f.seek(0)
-                    chunk = json.load(f)
-                else:
-                    chunk = None
+            try:
+                with open(self.data_filename,'r') as f:
+                    if len(f.readlines()) != 0:
+                        f.seek(0)
+                        chunk = json.load(f)
+                    else:
+                        chunk = None
+            except json.decoder.JSONDecodeError:
+                sleep(.1)
+                with open(self.data_filename,'r') as f:
+                    if len(f.readlines()) != 0:
+                        f.seek(0)
+                        chunk = json.load(f)
+                    else:
+                        chunk = None
+
             if chunk is not None:
                 keys = list(chunk.keys())
                 now = chunk[keys[0]]
