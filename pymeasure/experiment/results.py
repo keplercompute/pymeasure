@@ -496,7 +496,8 @@ class Results:
                 keys = list(chunk.keys())
                 now = chunk[keys[0]]
                 if len(keys) != 1:
-                    raise ValueError('Trying to load a non-JSON file as a JSON file')
+                    raise ValueError(f'Trying to load a non-JSON file as a JSON file'
+                                     f'got {keys} in the chunk')
                 self._data = pd.DataFrame(now)
             else:
                 self._data = pd.DataFrame(columns=self.procedure.DATA_COLUMNS)

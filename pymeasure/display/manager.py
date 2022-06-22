@@ -327,6 +327,7 @@ class Analysis(QtCore.QObject):
         self.results = results
         self.data_filename = self.results.data_filename
         self.procedure = self.results.procedure
+        print(f'The procedure status in results, passed to analysis is {self.procedure.status}')
         self.analysis = self.results.routine
         self.browser_item = analysis_browser_item
 
@@ -498,7 +499,7 @@ class AnalyzerManager(QtCore.QObject):
                 log.debug("Manager is initiating the next analysis")
                 self._running_analysis = self.analyses.next()
                 self._analyzer = Analyzer(self._running_analysis.results, port=self.port, log_level=self.log_level)
-
+                print(f'In the AM next, procedures status is {self._running_analysis.results.procedure.status}')
                 self._monitor = Monitor(self._analyzer.monitor_queue)
                 self._monitor.worker_running.connect(self._running)
                 self._monitor.worker_failed.connect(self._failed)
@@ -520,8 +521,8 @@ class AnalyzerManager(QtCore.QObject):
         self._monitor.stop = True
         success = self._monitor.wait(100)
         if not success:
-            log.debug('Monitor did not properly exit')
-            raise ValueError('Monitor did not exit properly')
+            log.debug('Analyzer monitor did not properly exit')
+            raise ValueError('Analyzer monitor did not exit properly')
         else:
             self._monitor.terminate()
         del self._analyzer
@@ -529,22 +530,22 @@ class AnalyzerManager(QtCore.QObject):
         del self._monitor
         self._worker = None
         self._running_analysis = None
-        log.debug("Manager has cleaned up after the Worker")
+        log.debug("Analyzer manager has cleaned up after the worker")
 
     def _failed(self):
-        log.debug("Manager's running analysis has failed")
+        log.debug("Analyzer manager's running analysis has failed")
         experiment = self._running_analysis
         self._clean_up()
         self.failed_am.emit(experiment)
 
     def _abort_returned(self):
-        log.debug("Manager's running analysis has returned after an abort")
+        log.debug("Analyzer manager's running analysis has returned after an abort")
         experiment = self._running_analysis
         self._clean_up()
         self.abort_returned_am.emit(experiment)
 
     def _finish(self):
-        log.debug("Manager's running analysis has finished")
+        log.debug("Analyzer manager's running analysis has finished")
         experiment = self._running_analysis
         self._clean_up()
         experiment.browser_item.setProgress(100.)
