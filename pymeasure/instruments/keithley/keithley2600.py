@@ -122,7 +122,6 @@ class Channel:
         """ Property controlling the nplc value """,
         validator=truncated_range,
         values=[0.001, 25],
-        map_values=True
     )
 
     ###############

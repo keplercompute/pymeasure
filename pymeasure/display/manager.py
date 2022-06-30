@@ -519,6 +519,7 @@ class AnalyzerManager(QtCore.QObject):
     def _clean_up(self):
         self._analyzer.join()
         self._monitor.stop = True
+        print(f'did monitor get stop? {self._monitor.stop}')
         success = self._monitor.wait(100)
         if not success:
             log.debug('Analyzer monitor did not properly exit')
