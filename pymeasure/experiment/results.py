@@ -491,6 +491,7 @@ class Results:
                 except json.decoder.JSONDecodeError:
                     sleep(.1)
                     print('Json data reload error. Probably thread conflict')
+                    chunk = None
 
                 i = i + 1
 
