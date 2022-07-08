@@ -476,21 +476,29 @@ class Results:
         """
         if self.output_format == 'JSON':
             self.old_data = self._data
-            try:
-                with open(self.data_filename,'r') as f:
-                    if len(f.readlines()) != 0:
-                        f.seek(0)
-                        chunk = json.load(f)
-                    else:
-                        chunk = None
-            except json.decoder.JSONDecodeError:
-                sleep(.1)
-                with open(self.data_filename,'r') as f:
-                    if len(f.readlines()) != 0:
-                        f.seek(0)
-                        chunk = json.load(f)
-                    else:
-                        chunk = None
+            exit_condition = 5
+            success = False
+            i = 0
+            while not success and i < exit_condition:
+
+                try:
+                    with open(self.data_filename,'r') as f:
+                        if len(f.readlines()) != 0:
+                            f.seek(0)
+                            chunk = json.load(f)
+                        else:
+                            chunk = None
+                except json.decoder.JSONDecodeError:
+                    sleep(.1)
+                    print('Json data reload error. Probably thread conflict')
+
+                i = i + 1
+
+                if chunk is not None:
+                    keys = list(chunk.keys())
+                    now = chunk[keys[0]]
+                    if len(keys) == 1:
+                        success = True
 
             if chunk is not None:
                 keys = list(chunk.keys())
