@@ -438,7 +438,7 @@ class BN675_AWG(Instrument):
         """
         self.write("wlist:waveform:delete \"%s\"" % name)
 
-    def delete_waveform_file(self, name):
+    def delete_waveform_file(self, filename):
         """
         Deletes the wf file in the default location with default append to name argument
         """
