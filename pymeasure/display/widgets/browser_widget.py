@@ -80,7 +80,6 @@ class BrowserWidget(QtGui.QWidget):
         self.clear_unfinished_button.clicked.connect(self.clear_unfinished)
         self.open_button.clicked.connect(self.open_experiment)
 
-
         self.browser.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.browser.itemChanged.connect(self.browser_item_changed)
         self.browser.customContextMenuRequested.connect(self.browser_item_menu)
@@ -108,10 +107,10 @@ class BrowserWidget(QtGui.QWidget):
             state = item.checkState(0)
             experiment = self.manager.experiments.with_browser_item(item)
             if state == 0:
-                for wdg, curve in zip(self.widget_list, experiment.curve_list):
+                for wdg, curve in zip(self._parent.widget_list, experiment.curve_list):
                     wdg.remove(curve)
             else:
-                for wdg, curve in zip(self.widget_list, experiment.curve_list):
+                for wdg, curve in zip(self._parent.widget_list, experiment.curve_list):
                     wdg.load(curve)
 
         self.ensure_button_consistency()
@@ -165,7 +164,7 @@ class BrowserWidget(QtGui.QWidget):
             pixelmap = QtGui.QPixmap(24, 24)
             pixelmap.fill(color)
             experiment.browser_item.setIcon(0, QtGui.QIcon(pixelmap))
-            for wdg, curve in zip(self.widget_list, experiment.curve_list):
+            for wdg, curve in zip(self._parent.widget_list, experiment.curve_list):
                 wdg.set_color(curve, color=color)
 
     def remove_experiment(self, experiment):
@@ -224,7 +223,7 @@ class BrowserWidget(QtGui.QWidget):
 
 
     def open_experiment(self):
-        dialog = ResultsDialog(self.procedure_class.DATA_COLUMNS, self.x_axis, self.y_axis)
+        dialog = ResultsDialog(self._parent.procedure_class.DATA_COLUMNS, self.x_axis, self.y_axis)
         if dialog.exec_():
             filenames = dialog.selectedFiles()
             for filename in map(str, filenames):
@@ -237,7 +236,7 @@ class BrowserWidget(QtGui.QWidget):
                     return
                 else:
                     results = Results.load(filename)
-                    experiment = self.new_experiment(results)
+                    experiment = self._parent.new_experiment(results)
                     for curve in experiment.curve_list:
                         if curve:
                             curve.update_data()
