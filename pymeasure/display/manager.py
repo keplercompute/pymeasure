@@ -214,7 +214,8 @@ class Manager(QtCore.QObject):
         """ Remove all Experiments
         """
         for experiment in self.experiments[:]:
-            if experiment.procedure.status != Procedure.FINISHED:
+            status = experiment.procedure.status
+            if status != Procedure.FINISHED and status != Procedure.RUNNING:
                 pathtofile = experiment.results.data_filenames
                 self.remove(experiment)
                 if len(pathtofile) != 1:

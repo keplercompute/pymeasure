@@ -247,7 +247,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
 
         self.abort_button = QtGui.QPushButton('Abort', self)
         self.abort_button.setEnabled(False)
-        self.abort_button.clicked.connect(self.abort)
+        self.abort_button.clicked.connect(self.browser_widget.abort)
 
         self.browser_widget = BrowserWidget(
             self.procedure_class,
@@ -367,7 +367,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
 
     def quit(self, evt=None):
         if self.browser_widget.manager.is_running():
-            self.abort()
+            self.browser_widget.abort()
         if self.use_analyzer:
             if self.analysis_browser_widget.analysis_manager.is_running():
                 self.analysis_browser_widget.abort_analysis()

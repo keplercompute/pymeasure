@@ -23,6 +23,8 @@
 #
 
 import logging
+import platform
+import os
 
 from ..browser import Browser
 from ..Qt import QtCore, QtGui
@@ -110,6 +112,12 @@ class BrowserWidget(QtGui.QWidget):
             else:
                 for wdg, curve in zip(self.widget_list, experiment.curve_list):
                     wdg.load(curve)
+
+        self.ensure_button_consistency()
+
+    def ensure_button_consistency(self):
+        pass
+
 
     def browser_item_menu(self, position):
         item = self.browser.itemAt(position)
@@ -203,6 +211,20 @@ class BrowserWidget(QtGui.QWidget):
 
     def clear_unfinished(self):
         self.manager.clear_unfinished()
+        self.clear_unfinished_button.setEnabled(False)
+        current_abort_button_text = self.abort_button.text()
+        print(current_abort_button_text)
+        if current_abort_button_text == "Abort":
+            pass
+        elif current_abort_button_text == 'Resume':
+            self.abort_button.setText("Abort")
+            self.abort_button.clicked.disconnect()
+            self.abort_button.clicked.connect(self.abort)
+        else:
+            raise ValueError(f'got unexpected button text {current_abort_button_text}')
+        self.abort_button.setEnabled(False)
+
+
 
     def open_experiment(self):
         dialog = ResultsDialog(self.procedure_class.DATA_COLUMNS, self.x_axis, self.y_axis)
