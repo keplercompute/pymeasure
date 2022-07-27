@@ -29,8 +29,8 @@ import os
 from ..browser import Browser
 from ..Qt import QtCore, QtGui
 from ..manager import Manager
-from ..widgets import ResultsDialog
-from ..windows import Results
+from pymeasure.display.widgets.results_dialog import ResultsDialog
+from pymeasure.experiment.results import Results
 
 import subprocess
 
@@ -44,6 +44,7 @@ class BrowserWidget(QtGui.QWidget):
     """
     def __init__(self, *args, parent=None):
         super().__init__(parent)
+        self._parent = parent
         self.browser_args = args
         self._setup_ui()
         self._layout()
@@ -61,17 +62,17 @@ class BrowserWidget(QtGui.QWidget):
         self.open_button = QtGui.QPushButton('Open', self)
         self.open_button.setEnabled(True)
 
-        self.manager = Manager(self.widget_list,
+        self.manager = Manager(self._parent.widget_list,
                                self.browser,
-                               port=self.port,
-                               log_level=self.log_level,
-                               parent=self)
+                               port=self._parent.port,
+                               log_level=self._parent.log_level,
+                               parent=self._parent)
         self.manager.abort_returned.connect(self.abort_returned)
         self.manager.queued.connect(self.queued)
         self.manager.running.connect(self.running)
         self.manager.finished.connect(self.finished)
         self.manager.failed.connect(self.failed)
-        self.manager.log.connect(self.log.handle)
+        self.manager.log.connect(self._parent.log.handle)
 
         self.show_button.clicked.connect(self.show_experiments)
         self.hide_button.clicked.connect(self.hide_experiments)
@@ -117,7 +118,6 @@ class BrowserWidget(QtGui.QWidget):
 
     def ensure_button_consistency(self):
         pass
-
 
     def browser_item_menu(self, position):
         item = self.browser.itemAt(position)
@@ -212,17 +212,14 @@ class BrowserWidget(QtGui.QWidget):
     def clear_unfinished(self):
         self.manager.clear_unfinished()
         self.clear_unfinished_button.setEnabled(False)
-        current_abort_button_text = self.abort_button.text()
-        print(current_abort_button_text)
+        current_abort_button_text = self._parent.abort_button.text()
+
         if current_abort_button_text == "Abort":
             pass
         elif current_abort_button_text == 'Resume':
-            self.abort_button.setText("Abort")
-            self.abort_button.clicked.disconnect()
-            self.abort_button.clicked.connect(self.abort)
+            self._parent.abort_button.setEnabled(False)
         else:
             raise ValueError(f'got unexpected button text {current_abort_button_text}')
-        self.abort_button.setEnabled(False)
 
 
 
@@ -249,56 +246,56 @@ class BrowserWidget(QtGui.QWidget):
                     log.info('Opened data file %s' % filename)
 
     def abort(self):
-        self.abort_button.setEnabled(False)
-        self.abort_button.setText("Resume")
-        self.abort_button.clicked.disconnect()
-        self.abort_button.clicked.connect(self.resume)
+        self._parent.abort_button.setEnabled(False)
+        self._parent.abort_button.setText("Resume")
+        self._parent.abort_button.clicked.disconnect()
+        self._parent.abort_button.clicked.connect(self.resume)
         try:
             self.manager.abort()
         except:  # noqa
             log.error('Failed to abort experiment', exc_info=True)
-            self.abort_button.setText("Abort")
-            self.abort_button.clicked.disconnect()
-            self.abort_button.clicked.connect(self.abort)
+            self._parent.abort_button.setText("Abort")
+            self._parent.abort_button.clicked.disconnect()
+            self._parent.abort_button.clicked.connect(self.abort)
 
     def resume(self):
-        self.abort_button.setText("Abort")
-        self.abort_button.clicked.disconnect()
-        self.abort_button.clicked.connect(self.abort)
+        self._parent.abort_button.setText("Abort")
+        self._parent.abort_button.clicked.disconnect()
+        self._parent.abort_button.clicked.connect(self.abort)
         if self.manager.experiments.has_next():
             self.manager.resume()
         else:
-            self.abort_button.setEnabled(False)
+            self._parent.abort_button.setEnabled(False)
 
     def queued(self, experiment):
-        self.abort_button.setEnabled(True)
+        self._parent.abort_button.setEnabled(True)
         self.show_button.setEnabled(True)
         self.hide_button.setEnabled(True)
         self.clear_button.setEnabled(True)
         self.clear_unfinished_button.setEnabled(True)
 
     def failed(self, experiment):
-        self.abort_button.setText("Resume")
-        self.abort_button.clicked.disconnect()
-        self.abort_button.clicked.connect(self.resume)
+        self._parent.abort_button.setText("Resume")
+        self._parent.abort_button.clicked.disconnect()
+        self._parent.abort_button.clicked.connect(self.resume)
         self.clear_button.setEnabled(True)
         self.clear_unfinished_button.setEnabled(True)
 
     def running(self, experiment):
         self.clear_button.setEnabled(False)
-        self.clear_unfinished_button.setEnabled(False)
 
     def abort_returned(self, experiment):
         if self.manager.experiments.has_next():
-            self.abort_button.setText("Resume")
-            self.abort_button.setEnabled(True)
+            self._parent.abort_button.setText("Resume")
+            self._parent.abort_button.setEnabled(True)
             self.clear_unfinished_button.setEnabled(True)
         else:
             self.clear_button.setEnabled(True)
+            self.clear_unfinished_button.setEnabled(True)
 
     def finished(self, experiment):
 
         if not self.manager.experiments.has_next():
-            self.abort_button.setEnabled(False)
+            self._parent.abort_button.setEnabled(False)
             self.clear_button.setEnabled(True)
             self.clear_unfinished_button.setEnabled(False)

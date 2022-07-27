@@ -247,7 +247,6 @@ class ManagedWindowBase(QtGui.QMainWindow):
 
         self.abort_button = QtGui.QPushButton('Abort', self)
         self.abort_button.setEnabled(False)
-        self.abort_button.clicked.connect(self.browser_widget.abort)
 
         self.browser_widget = BrowserWidget(
             self.procedure_class,
@@ -255,6 +254,10 @@ class ManagedWindowBase(QtGui.QMainWindow):
             [],  # This value will be patched by subclasses, if needed
             parent=self
         )
+
+        self.abort_button.clicked.connect(self.browser_widget.abort)
+
+
 
         self.manager = self.browser_widget.manager
 
@@ -382,7 +385,7 @@ class ManagedWindowBase(QtGui.QMainWindow):
 
     def new_curve(self, wdg, results, color=None, **kwargs):
         if color is None:
-            color = pg.intColor(self.browser.topLevelItemCount() % 8)
+            color = pg.intColor(self.browser_widget.browser.topLevelItemCount() % 8)
         return wdg.new_curve(results, color=color, **kwargs)
 
     def new_experiment(self, results, curve=None):
