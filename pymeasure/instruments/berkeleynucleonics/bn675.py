@@ -467,12 +467,8 @@ class BN675_AWG(Instrument):
         #sleep(.01)
 
     def delete_all_user(self, key):
-        print('deleting_all_user arbs')
-        wlist = self.waveform_list
-        for elem in wlist:
-            if key in elem:
-                self.delete_waveform(elem)
-                self.delete_waveform_file(elem)
+        self.write('WLIST:WAV:DEL ALL')
+
 
     def transfer_and_load(self, array, wfname, cautious=True):
         """
