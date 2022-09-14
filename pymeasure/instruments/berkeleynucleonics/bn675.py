@@ -470,19 +470,21 @@ class BN675_AWG(Instrument):
         self.write('WLIST:WAV:DEL ALL')
 
 
-    def transfer_and_load(self, array, wfname, cautious=True):
+    def transfer_and_load(self, array, wfname, efficient=False,cautious=True):
         """
         Creates a file in the 'C:\\Users\\AWG3000\\Pictures\\Saved Pictures\\' directory
          with the filename wfname + '.txt' out of the input array (must be a single column).
          That file is then loaded to the waveform list with name wfname. If wfname.txt or wfname
          already exist in then they are overwritten.
         """
+        if efficient:
+            if wfname in self.waveform_list:
+                return
         if cautious:
             wlist = self.waveform_list
             if wfname in wlist:
                 self.delete_waveform(wfname)
                 self.delete_waveform_file(wfname)
-
         self.transfer_array(array, wfname)
         self.load_waveform_from_file(wfname, self.default_dir+wfname)
 
