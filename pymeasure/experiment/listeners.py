@@ -139,6 +139,7 @@ class Recorder(QueueListener):
 
         for file in self.results.data_filenames:
             if stat(file).st_size == 0:
+                # this case is deprecated, new files have header in them
                 with open(file, 'w') as f:
                     extant = {key: {}}
                     for column, value in item.items():
@@ -155,7 +156,12 @@ class Recorder(QueueListener):
                 if key in extant.keys():
                     data = extant[key]
                     for column, array in data.items():
-                        array.append(item[column])
+                        if isinstance(item[column], (list,tuple)):
+                            data[column] = np.concatenate([array,item[column]])
+                        elif isinstance(item[column], (float,int)):
+                            array.append(item[column])
+                        else:
+                            raise TypeError(f'got unexpected type for {item[column]}, {type(item[column])}')
                 else:
                     extant[key] = item
 
