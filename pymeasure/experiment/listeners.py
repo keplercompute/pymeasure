@@ -28,6 +28,7 @@ from logging import StreamHandler, FileHandler
 from os import stat
 import json
 import pandas as pd
+import numpy as np
 
 from ..log import QueueListener
 from ..thread import StoppableThread
@@ -157,7 +158,7 @@ class Recorder(QueueListener):
                     data = extant[key]
                     for column, array in data.items():
                         if isinstance(item[column], (list,tuple)):
-                            data[column] = np.concatenate([array,item[column]])
+                            data[column] = list(np.concatenate([array,item[column]]))
                         elif isinstance(item[column], (float,int)):
                             array.append(item[column])
                         else:
