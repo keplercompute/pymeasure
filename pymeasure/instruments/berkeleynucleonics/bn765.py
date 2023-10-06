@@ -65,13 +65,9 @@ class Pulse():
         Alternative way to set the delay."""
     )
 
-
-
-
     def __init__(self, instrument, pulse_number):
         self.instrument = instrument
         self.pulse_number = pulse_number
-
 
     def values(self, command, **kwargs):
         """ Reads a set of values from the instrument through the adapter,
@@ -226,14 +222,35 @@ class BN765(Instrument):
         """Returns the instrument status, 0 if stopped, 1 if running"""
     )
 
+    num_channels = 0
+
     def __init__(self, adapter, **kwargs):
         super(BN765, self).__init__(
             adapter,
             "BN 765 Function/Arbitrary Waveform generator",
             **kwargs
         )
-        self.ch1 = Channel(self, 1)
-        self.ch2 = Channel(self, 2)
+
+        nc = 0
+
+        for i in range(0, 4):
+            try:
+                ret = self.query("OUT{:}:PULSE:MODE?".format(str(i+1)))
+            except VisaIOError:
+                break
+
+            if isinstance(ret, str):
+                nc += 1
+            else:
+                break
+
+        self.num_channels = nc
+
+        if nc < 2:
+            raise ValueError("PG has insufficient (< 2) channels for operation.")
+
+        for c in range(1, nc+1):
+            setattr(self, "ch{:}".format(str(c)), Channel(self, c))
 
     trigger_mode = Instrument.control(
         "TRIGger:SEQ:MODE?", "TRIGger:SEQ:MODE %s",
