@@ -48,11 +48,7 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
             self.setCheckState(0, QtCore.Qt.Checked)
         except AttributeError:
             self.setFlags(self.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
-<<<<<<< HEAD
-        self.setCheckState(0, QtCore.Qt.CheckState.Checked)
-=======
             self.setCheckState(0, QtCore.Qt.CheckState.Checked)
->>>>>>> master
         self.setText(1, basename(results.data_filename))
 
         self.setStatus(results.procedure.status)
