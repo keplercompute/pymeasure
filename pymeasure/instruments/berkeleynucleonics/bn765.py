@@ -42,13 +42,13 @@ class Pulse():
     BOOLS = {True: 1, False: 0}
 
     width = Instrument.control(
-        'width?', 'width %.4E',
+        'width?', 'width %.10F',
         """Float parameter that contols the width of the pulse represented by this instance, on this
          instance of channel. Width must be less than pulse period"""
     )
 
     delay = Instrument.control(
-        'delay?', 'delay %.4E',
+        'delay?', 'delay %.10F',
         """Float paramer which controls the delay for the specified pulse relative
         to the selected output channel"""
     )
@@ -101,7 +101,7 @@ class Channel():
     )
 
     period = Instrument.control(
-        "PERiod?", "PERiod %.4E",
+        "PERiod?", "PERiod %.9F",
         """ A floating point property that controls the period of the output1
         waveform function in seconds, ranging from 3e-5 s to 8 s. Can be set
         and overwrites the frequency for *all* waveforms. If the period is
@@ -232,8 +232,27 @@ class BN765(Instrument):
             "BN 765 Function/Arbitrary Waveform generator",
             **kwargs
         )
-        self.ch1 = Channel(self, 1)
-        self.ch2 = Channel(self, 2)
+
+        nc = 0
+
+        for i in range(0, 4):
+            try:
+                ret = self.ask("OUTP{:}:PULS:MODE?".format(str(i+1)))
+            except VisaIOError:
+                break
+
+            if isinstance(ret, str):
+                nc += 1
+            else:
+                break
+
+        self.num_channels = nc
+
+        if nc < 2:
+            raise ValueError("PG has insufficient (< 2) channels for operation.")
+
+        for c in range(1, nc+1):
+            setattr(self, "ch{:}".format(str(c)), Channel(self, c))
 
     trigger_mode = Instrument.control(
         "TRIGger:SEQ:MODE?", "TRIGger:SEQ:MODE %s",

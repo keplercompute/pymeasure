@@ -236,6 +236,10 @@ class BrowserWidget(QtWidgets.QWidget):
                 item.setCheckState(0, QtCore.Qt.Unchecked)
             except AttributeError:
                 item.setCheckState(0, QtCore.Qt.CheckState.Unchecked)
+<<<<<<< HEAD
+=======
+
+>>>>>>> master
 
     def clear_experiments(self):
         self.manager.clear()
