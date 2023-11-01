@@ -207,6 +207,7 @@ class Analyzer(StoppableThread):
         #    raise ValueError("Trying to analyze procedure not marked as finished")
         if self.results.routine is None:
             raise ValueError('No analyzer routine instanced to results object')
+        self.routine = self.results.routine
 
         self.monitor_queue = Queue()
         if log_queue is None:
@@ -299,7 +300,6 @@ class Analyzer(StoppableThread):
     def run(self):
         log.info("Analyzer thread started")
 
-        self.routine = self.results.routine
         self.routine.procedure = self.results.procedure
         self.routine.data = self.results.data
 

@@ -772,7 +772,7 @@ class FeatherFileHandler(logging.FileHandler):
 
             newdata = pd.DataFrame(record)
         data = pd.concat([olddata,newdata], ignore_index=True)
-        newtable = pa.Table.from_pandas(data, preserve_index=False)
+        newtable = pa.Table.from_pandas(data, preserve_index=False, nthreads=1)
 
         existing_metadata = newtable.schema.metadata
         new_metadata = {**existing_metadata, **{'header': header}}
@@ -808,7 +808,7 @@ class FeatherResults(FileBasedResults):
     def create_resources(self):
         header = self.create_header()
         data = pd.DataFrame({col:[] for col in self.procedure.DATA_COLUMNS})
-        newtable = pa.Table.from_pandas(data, preserve_index=False)
+        newtable = pa.Table.from_pandas(data, preserve_index=False, nthreads=1)
 
         existing_metadata = newtable.schema.metadata
         new_metadata = {**existing_metadata, **{'header': header}}
@@ -884,7 +884,7 @@ class ParquetFileHandler(logging.FileHandler):
 
             newdata = pd.DataFrame(record)
         data = pd.concat([olddata,newdata], ignore_index=True)
-        newtable = pa.Table.from_pandas(data, preserve_index=False)
+        newtable = pa.Table.from_pandas(data, preserve_index=False, nthreads=1)
 
         existing_metadata = newtable.schema.metadata
         new_metadata = {**existing_metadata, **{'header': header}}
@@ -920,7 +920,7 @@ class ParquetResults(FileBasedResults):
     def create_resources(self):
         header = self.create_header()
         data = pd.DataFrame({col:[] for col in self.procedure.DATA_COLUMNS})
-        newtable = pa.Table.from_pandas(data, preserve_index=False)
+        newtable = pa.Table.from_pandas(data, preserve_index=False, nthreads=1)
 
         existing_metadata = newtable.schema.metadata
         new_metadata = {**existing_metadata, **{'header': header}}
