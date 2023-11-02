@@ -35,7 +35,7 @@ from pyvisa.errors import VisaIOError
 
 
 class Channel():
-    """ Implementation of a Lecroy Wavemaster 845Zi-A Oscilloscope channel. Note, that is
+    """ Implementation of a Lecroy Waverunner 8000 Oscilloscope channel. Note, that is
     The primary command style is the VBS style instead of the SCPI-like commands. Why?
     There is literally no complete command reference. I had to root around the instrument
     COM explorer to figure out how to access these parameters.
@@ -58,13 +58,20 @@ class Channel():
         values=['InputA', 'InputB', 'InputBHBW'],
     )
 
+    coupling = Instrument.control(
+        'Coupling', """Coupling = "%s" """,
+        """A string parameter that gets or sets the input impedance of the channel""",
+        validator=strict_discrete_set,
+        values=['DC1M', 'AC1M', 'DC50', 'GND'],
+    )
+
     average_sweeps = Instrument.control(
         # good?
         "AverageSweeps", """AverageSweeps = %d """,
         """ An integer parameter that sets the number of sweeps to average on this channel.
         Range is 1 to 1,000,000""",
         validator=strict_range,
-        values=[1, 1000000],
+        values=[1,1000000],
     )
 
     display = Instrument.control(
@@ -115,8 +122,8 @@ class Channel():
 
 
 
-class LecroyWM845Zi_A(Instrument):
-    """ Represents the Lecroy Wavemaster 845Zi-A Oscilloscope interface for interacting
+class LecroyHDO4000(Instrument):
+    """ Represents the Lecroy HDO4000 Oscilloscope interface for interacting
     with the instrument. Make sure you set the communication to LXI
     and not TCPIP (VICP) on the scope if you want this code to work out of the box.
     You'll get a message of "Warning: Remote Interface is TCPIP" if you forget.
@@ -137,8 +144,8 @@ class LecroyWM845Zi_A(Instrument):
     BOOLS = {True: 1, False: 0}
 
     def __init__(self, adapter, **kwargs):
-        super(LecroyWM845Zi_A, self).__init__(
-            adapter, "Lecroy WaveMaster 845Zi-A Oscilloscope", **kwargs
+        super(LecroyHDO4000, self).__init__(
+            adapter, "Lecroy HDO4000 Oscilloscope", **kwargs
         )
         # Account for setup time for timebase_mode, waveform_points_mode
         self.adapter.connection.timeout = 6000
@@ -147,7 +154,6 @@ class LecroyWM845Zi_A(Instrument):
         self.ch2 = Channel(self, 2)
         self.ch3 = Channel(self, 3)
         self.ch4 = Channel(self, 4)
-
 
 
     system_headers = Instrument.control(
@@ -265,6 +271,7 @@ class LecroyWM845Zi_A(Instrument):
         mapper = {'ON': True, 'OFF': False}
         return {'is_on': mapper[state], 'n_sequences': int(nseq), 'memdepth': float(memdepth)}
 
+
     def clear_sweeps(self):
         self.write("""VBS 'app.ClearSweeps'""")
 
@@ -277,7 +284,7 @@ class LecroyWM845Zi_A(Instrument):
         """
         if channel == 0:
             source = 'Ext'
-        elif channel in [1, 2, 3, 4]:
+        elif channel in [1, 2, 3, 4, 5, 6, 7, 8]:
             source = 'C%d' % channel
         else:
             raise ValueError(f'{channel} not a valid trigger source')
@@ -323,7 +330,7 @@ class LecroyWM845Zi_A(Instrument):
     def wait_for_idle(self, basewait=0.01, timeout=5):
         cmd = f"""vbs? 'return=app.WaitUntilIdle({basewait})"""
         returned = int(self.ask(cmd))
-        breaker = int(timeout/basewait)
+        breaker = int(timeout / basewait)
         if breaker <= 0:
             raise ValueError(f'timeout {timeout} is shorter than wait {basewait}')
         i = 0
@@ -331,6 +338,7 @@ class LecroyWM845Zi_A(Instrument):
             sleep(basewait)
             returned = int(self.ask(cmd))
             i += 1
+
 
     def wait_for_op(self, timeout=3600, should_stop=lambda: False):
         #good

@@ -210,7 +210,6 @@ class Analyzer(StoppableThread):
         if self.results.routine is None:
             raise ValueError('No analyzer routine instanced to results object')
         self.routine = self.results.routine
-
         self.monitor_queue = Queue()
         if log_queue is None:
             log_queue = Queue()
@@ -307,7 +306,8 @@ class Analyzer(StoppableThread):
         self.routine.procedure = self.results.procedure
         for i in range(retries):
             try:
-                log.info(f'about to attempt to feather reload from {self.results.data_filename}')
+                log.info(
+                    f'about to attempt to feather reload from {self.results.data_filename}')
                 self.routine.data = self.results.data
                 success = True
             except Exception as e:
@@ -319,7 +319,7 @@ class Analyzer(StoppableThread):
             if success:
                 break
             sleep(.1)
-        
+
 
         self.routine.should_stop = self.should_stop
         self.routine.emit = self.emit
