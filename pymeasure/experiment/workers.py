@@ -26,6 +26,8 @@ import logging
 import time
 import traceback
 from queue import Queue
+from time import sleep
+import traceback
 
 from .listeners import Recorder
 from .procedure import Procedure
@@ -276,6 +278,7 @@ class Analyzer(StoppableThread):
         self.emit('status', status)
 
     def shutdown(self):
+        log.info('Attempting to shutdown analyzer')
         self.routine.shutdown()
 
         if self.should_stop() and self.routine.status == Procedure.RUNNING:
@@ -298,10 +301,25 @@ class Analyzer(StoppableThread):
             self.context.term()
 
     def run(self):
+        retries = 3
         log.info("Analyzer thread started")
-
+        
         self.routine.procedure = self.results.procedure
-        self.routine.data = self.results.data
+        for i in range(retries):
+            try:
+                log.info(f'about to attempt to feather reload from {self.results.data_filename}')
+                self.routine.data = self.results.data
+                success = True
+            except Exception as e:
+                msg = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+                log.info(f'Error detected {e}'
+                        )
+                log.info(f'{msg}')
+                success = False
+            if success:
+                break
+            sleep(.1)
+        
 
         self.routine.should_stop = self.should_stop
         self.routine.emit = self.emit
@@ -312,13 +330,16 @@ class Analyzer(StoppableThread):
 
         try:
             self.routine.startup()
+            log.info('made it through analyzer startup')
             self.routine.execute()
+            log.info('made it through analyzer execute')
         except (KeyboardInterrupt, SystemExit):
             self.handle_abort()
         except Exception:
             self.handle_error()
         finally:
             self.shutdown()
+            log.info('made it through analyzer shutdown, stopping next')
             self.stop()
 
     def __repr__(self):
