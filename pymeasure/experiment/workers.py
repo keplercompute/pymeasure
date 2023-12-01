@@ -287,6 +287,7 @@ class Analyzer(StoppableThread):
                 self.emit('progress', 100.)
                 self.update_status(Procedure.FINISHED)
                 self.update_status(Procedure.QUEUED)
+                sleep(0.01)
             else:
                 self.update_status(Procedure.FINISHED)
 

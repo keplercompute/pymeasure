@@ -43,7 +43,6 @@ class SignalRouter:
         self.procedure_class = procedure_class
 
     def handle(self, *args):
-        print(self.element.value())
         self.do()
 
     def do(self):
