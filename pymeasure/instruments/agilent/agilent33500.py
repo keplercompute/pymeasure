@@ -124,7 +124,7 @@ class Channel(object):
             data_points_str = [str(item) for item in data_points]  # Turn list entries into strings
             data_string = separator.join(data_points_str)  # Join strings with separator
             print(f"DATA:ARB {arb_name}, {data_string}")
-            self.write(f"DATA:ARB {arb_name}, {data_string}")
+            self.instrument.adapter.write(f"SOURCE{self.number}:DATA:ARB {arb_name}, {data_string}")
             return
         else:
             raise ValueError('Undefined format keyword was used. Valid entries are "DAC", "float"')
