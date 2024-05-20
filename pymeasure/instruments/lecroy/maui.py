@@ -33,6 +33,7 @@ from pymeasure.instruments.validators import strict_discrete_set, strict_range
 from time import sleep, time
 from pyvisa.errors import VisaIOError
 
+MAX_SAMPLING = 120e9
 
 class ChannelBase():
     """ Implementation of a Lecroy MAUI channel. Note, that is
@@ -194,6 +195,8 @@ class LecroyMAUIBase(Instrument):
     # Trigger #
     ###########
 
+
+
     aux_in_coupling = Instrument.control(
         # good
         "vbs? 'return = app.acquisition.auxin.Coupling'",
@@ -242,6 +245,38 @@ class LecroyMAUIBase(Instrument):
         validator=strict_range,
         values=[-0.82, 0.82]
     )
+
+    @property
+    def sampling_strategy(self):
+        strategy = self.ask("vbs? 'return = app.acquisition.horizontal.Maximize'")
+        strategy = strategy.strip()
+        return strategy
+
+    @sampling_strategy.setter
+    def sampling_strategy(self, strategy):
+        if isinstance(strategy, str):
+            if strategy not in ['SetMaximumMemory', 'FixedSampleRate']:
+                raise ValueError(f"strategy must be 0,1, "
+                                 f"'SetMaximumMemory', 'FixedSampleRate' not {strategy} ")
+        elif isinstance(strategy, (int, float)):
+            if strategy not in [0,1]:
+                raise ValueError(f"strategy must be 0,1, "
+                                 f"'SetMaximumMemory', 'FixedSampleRate' not {strategy} ")
+        else:
+            raise TypeError(f"only str's, int's and float's are allowed, not {type(strategy)}")
+        self.write(f"vbs 'app.acquisition.horizontal.Maximize = {strategy}'")
+
+    def set_sample_rate(self, sample_rate=0):
+        """Set the sample rate according to sample_rate. If sample_rate is 0 or None,
+         set to maximum sample rate."""
+
+        if sample_rate == 0 or sample_rate is None:
+            self.write(f"vbs 'app.acquisition.horizontal.SampleRate = {MAX_SAMPLING}'")
+            self.sampling_strategy = 'SetMaximumMemory'
+
+        else:
+            self.write(f"vbs 'app.acquisition.horizontal.SampleRate = {sample_rate}'")
+            self.sampling_strategy = 'FixedSampleRate'
 
     def setup_sequence(self, sequence_on, n_sequences=1, max_size=None):
         """
@@ -446,7 +481,6 @@ class LecroyMAUIBase(Instrument):
             - "yorigin": voltage at center of screen (float)
             - "yreference": data point associated with yorigin (int)"""
         return self._waveform_preamble(channel=channel)
-
 
 
     def waveform_data_word(self, source, sparsing=0, sequence_index=None):
