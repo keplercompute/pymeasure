@@ -278,11 +278,11 @@ class LecroyMAUIBase(Instrument):
 
         if sample_rate == 0 or sample_rate is None:
             self.write(f"vbs 'app.acquisition.horizontal.SampleRate = {MAX_SAMPLING}'")
-            self.sampling_strategy = 'SetMaximumMemory'
+            self.sampling_strategy = 0
 
         else:
             self.write(f"vbs 'app.acquisition.horizontal.SampleRate = {sample_rate}'")
-            self.sampling_strategy = 'FixedSampleRate'
+            self.sampling_strategy = 1
 
 
 
