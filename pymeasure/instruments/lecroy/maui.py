@@ -269,7 +269,7 @@ class LecroyMAUIBase(Instrument):
 
     @property
     def sample_rate(self):
-        return "vbs? 'return = app.acquisition.horizontal.SampleRate'"
+        return self.ask("vbs? 'return = app.acquisition.horizontal.SampleRate'")
 
     @sample_rate.setter
     def sample_rate(self, sample_rate):
