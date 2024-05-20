@@ -266,7 +266,13 @@ class LecroyMAUIBase(Instrument):
             raise TypeError(f"only str's, int's and float's are allowed, not {type(strategy)}")
         self.write(f"vbs 'app.acquisition.horizontal.Maximize = {strategy}'")
 
-    def set_sample_rate(self, sample_rate=0):
+
+    @property
+    def sample_rate(self):
+        return "vbs? 'return = app.acquisition.horizontal.SampleRate'"
+
+    @sample_rate.setter
+    def sample_rate(self, sample_rate):
         """Set the sample rate according to sample_rate. If sample_rate is 0 or None,
          set to maximum sample rate."""
 
@@ -277,6 +283,8 @@ class LecroyMAUIBase(Instrument):
         else:
             self.write(f"vbs 'app.acquisition.horizontal.SampleRate = {sample_rate}'")
             self.sampling_strategy = 'FixedSampleRate'
+
+
 
     def setup_sequence(self, sequence_on, n_sequences=1, max_size=None):
         """
