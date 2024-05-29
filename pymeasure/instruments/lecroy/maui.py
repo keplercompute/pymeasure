@@ -506,11 +506,10 @@ class LecroyMAUIBase(Instrument):
         self.waveform_format = "WORD"
         self.waveform_byteorder = 'little'
         preamble = self.waveform_preamble
-        data = self.adapter.connection.query_binary_values(f"{source}:WAVEFORM? ", datatype='h')
+        data = self.adapter.connection.query_binary_values(f"{source}:WAVEFORM? DAT1", datatype='h')
         sparsing_factor = 1
         if preamble['SPARSING_FACTOR'] > 0:
             sparsing_factor = int(preamble['SPARSING_FACTOR'])
-        data = data[-preamble['points']//(sparsing_factor):]
 
         return data
 
@@ -598,5 +597,6 @@ class LecroyMAUIBase(Instrument):
         wfdata['yincrement'] = wfdata['VERTICAL_GAIN']
         wfdata['yorigin'] = wfdata['VERTICAL_OFFSET']
         wfdata['xreference'] = wfdata['FIRST_POINT']
+        wfdata['wave_array_count'] = wfdata['WAVE_ARRAY_COUNT']
 
         return wfdata
