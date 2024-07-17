@@ -31,7 +31,14 @@ import numpy as np
 from pymeasure.instruments import Instrument
 from pymeasure.instruments.validators import strict_discrete_set, strict_range
 from time import sleep, time
+import struct
 from pyvisa.errors import VisaIOError
+
+tdiv_enum=[100e-12,200e-12,500e-12,\
+ 1e-9,2e-9,5e-9,10e-9,20e-9,50e-9,100e-9,200e-9,500e-9,\
+ 1e-6,2e-6,5e-6,10e-6,20e-6,50e-6,100e-6,200e-6,500e-6,\
+ 1e-3,2e-3,5e-3,10e-3,20e-3,50e-3,100e-3,200e-3,500e-3,\
+ 1,2,5,10,20,50,100,200,500,1000]
 
 
 class ChannelBase():
@@ -382,6 +389,12 @@ class LecroyT3DSOBase(Instrument):
          Not normally called by user"""
     )
 
+    _waveform_sparsing = Instrument.control(
+        # good
+        ":WAVeform:INTerval?", ":WAVeform:INTerval %d",
+        """How many points between each point during data transfer. Also called sparsing.
+         Not normally called by user"""
+    )
 
     waveform_format = Instrument.control(
         #good
@@ -399,38 +412,50 @@ class LecroyT3DSOBase(Instrument):
     def waveform_preamble(self, channel=None):
         #good
         """ Get preamble information for the selected waveform source as a dict with the following keys:
-            - "format": byte, word, or ascii (str)
-            - "type": normal, peak detect, or average (str)
-            - "points": nb of data points transferred (int)
-            - "count": always 1 (int)
-            - "xincrement": time difference between data points (float)
-            - "xorigin": first data point in memory (float)
-            - "xreference": data point associated with xorigin (int)
-            - "yincrement": voltage difference between data points (float)
-            - "yorigin": voltage at center of screen (float)
-            - "yreference": data point associated with yorigin (int)"""
+            -'data_bytes' : the number of bytes transfered. If you request the full 12 bits of precision 
+            be transfered this will always be double the number of actual points. However, the default is 
+            to only transmit bytes, which returns a lower precision result but only 1 byte per point
+            - 'point_num' : number of points transfered, see note above
+            - 'fp' : the first point of the waveform, relevant if you are returning a subset of the total wf
+            - 'sp' : sparsing factor for the data return
+            - 'interval' : time distance between points, should be 1/sampling rate
+            - 'delay' : time distance from the trigger point to the center of the acquisition window. I.e.
+            a positive value means the trigger happens to the left of the center
+            - 'probe' : probe attenuation factor
+            - 'vdiv' : Volts per divsion
+            - 'offset' : offset of the vertical scale,
+            - 'code' : waveform data out / code * vdiv = actual signal,
+            - 'tdiv' : time per division
+           """
         return self._waveform_preamble(channel=channel)
 
 
 
-    def waveform_data_word(self, source, sparsing=0):
+    def waveform_data_word(self, source, sparsing=1):
         #good
         """ Get the block of sampled data points transmitted using the IEEE 488.2 arbitrary
         block data format. valid sources are C1, C2, C3, C4, F1-4, M1-4
         Sparsing is the Lecroy sparsing factor. If you want to keep every nth point,
         set sparsing to n-1. """
         # Other waveform formats raise UnicodeDecodeError
-        self.waveform_sparsing = sparsing
         self.waveform_format = "WORD"
-        self.waveform_byteorder = 'little'
-        preamble = self.waveform_preamble
-        data = self.adapter.connection.query_binary_values(f"{source}:WAVEFORM? ", datatype='h')
-        sparsing_factor = 1
-        if preamble['SPARSING_FACTOR'] > 0:
-            sparsing_factor = int(preamble['SPARSING_FACTOR'])
-        data = data[-preamble['points']//(sparsing_factor):]
+        self._waveform_sparsing = sparsing
+        self._waveform_source = source
+        data = self.adapter.connection.query_binary_values(f"WAV:DATA?", datatype='h')
 
         return data
+    
+    def waveform_data_formatted(self, source, sparsing=1):
+        """
+        Get the full trace of the data and covert it to voltage, not just the integers the scope
+        spits out.
+        """
+        data = self.waveform_data_word(source, sparsing)
+        preamble = self.waveform_preamble
+
+        formatted = np.array(data) / preamble["code"] * preamble['vdiv']
+        return formatted
+
 
     ################
     # System Setup #
@@ -488,33 +513,49 @@ class LecroyT3DSOBase(Instrument):
         #good
         """
         Reads waveform preamble and converts it to a more convenient dict of values.
+
+        Unlike the MAUI-based lecroy scopes, we only get binary which needs to be decoded
+        according to a table on page 725 of the programming manual. As such, we need to
+        read_raw and then unpack the slices with the struct library according to their dtype.
+
+
         """
-        wfdata = {}
-        if channel is not None:
-            out = self.ask(f'C{channel}:INSPECT? "WAVEDESC"').split('\r\n')[1:-1]
-        else:
-            out = self.ask('INSPECT? "WAVEDESC"').split('\r\n')[1:-1]
-        for elem in out:
-            key = elem.split(':')[0].strip()
-            value = elem.split(':')[1].strip()
-            try:
-                value = int(value)
-            except:
-                try:
-                    value = float(value)
-                except:
-                    pass
-            wfdata[key] = value
-
-        wfdata["format"] = wfdata['COMM_TYPE']
-        wfdata['points'] = wfdata['PNTS_PER_SCREEN']
-        if wfdata['SPARSING_FACTOR'] > 0:
-            wfdata['xincrement'] = wfdata['HORIZ_INTERVAL'] * wfdata['SPARSING_FACTOR']
-        else:
-            wfdata['xincrement'] = wfdata['HORIZ_INTERVAL']
-        wfdata['xorigin'] = wfdata['HORIZ_OFFSET']
-        wfdata['yincrement'] = wfdata['VERTICAL_GAIN']
-        wfdata['yorigin'] = wfdata['VERTICAL_OFFSET']
-        wfdata['xreference'] = wfdata['FIRST_POINT']
-
-        return wfdata
+        self.write("WAV:PREamble?")
+        recv_raw = self.adapter.connection.read_raw()
+        # there is always a preable of #9 then 9 digits representing the number
+        # of bytes. Most of those are 0's as the preamble is like 356 bytes.
+        # This is the standard format for binary transfer. I could be smart
+        # and read the #9 and then add the 9 to the first two bytes, but I
+        # didnt'. I hope no one pays for this sin later. -Neal
+        recv = recv_raw[11:]
+        WAVE_ARRAY_1 = recv[60:63+1]
+        wave_array_count = recv[116:119+1]
+        first_point = recv[132:135+1]
+        sp = recv[136:139+1]
+        v_scale = recv[156:159+1]
+        v_offset = recv[160:163+1]
+        interval = recv[176:179+1]
+        code_per_div = recv[164:167 + 1]
+        delay = recv[180:187+1]
+        tdiv = recv[324:325+1]
+        probe = recv[328:331+1]
+        probe = struct.unpack('f',probe)[0]
+        tdiv_index = struct.unpack('h',tdiv)[0]
+        interval = struct.unpack('f',interval)[0]
+        nearestlog = int(np.log10(interval))
+        rational = interval / 10**(nearestlog)
+        rational = np.round(rational, 7)
+        interval = rational * 10**(nearestlog)
+        ddict={
+            'data_bytes' : struct.unpack('i',WAVE_ARRAY_1)[0],
+            'point_num' : struct.unpack('i',wave_array_count)[0],
+            'fp' : struct.unpack('i',first_point)[0],
+            'sp' : struct.unpack('i',sp)[0],
+            'interval' : interval,
+            'delay' : struct.unpack('d',delay)[0],
+            'probe' : probe,
+            'vdiv' : np.round(struct.unpack('f',v_scale)[0], 8)*probe,
+            'offset' : struct.unpack('f',v_offset)[0]*probe,
+            'code' : struct.unpack('f', code_per_div)[0],
+            'tdiv' : tdiv_enum[tdiv_index]}
+        return ddict
