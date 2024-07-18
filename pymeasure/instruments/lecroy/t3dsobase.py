@@ -166,31 +166,19 @@ class LecroyT3DSOBase(Instrument):
     ##################
 
     timebase_offset = Instrument.control(
-        #good
-        "vbs? 'return = app.acquisition.horizontal.HorOffset'",
-        "vbs 'app.acquisition.horizontal.HorOffset = %.4E'",
+        ":TIMebase:DELay?",
+        ":TIMebase:DELay %.4E",
         """ A float parameter that sets the time interval in seconds between the trigger 
-        event and the reference position (at center of screen by default). Reference position set
-        by self.timebase_origin in divs.""",
+        event and the reference position (at center of screen by default). Positive value means
+        trigger is left of the center""",
         validator=strict_range,
         values=[-2e-4, 1.4999e-3]
     )
 
-    timebase_origin = Instrument.control(
-        #good
-        "vbs? 'return = app.acquisition.horizontal.HorOffsetOrigin'",
-        "vbs 'app.acquisition.horizontal.HorOffsetOrigin = %.4E'",
-        """ A float parameter that sets the time interval in seconds between the trigger 
-        event and the reference position (at center of screen by default). Reference position set
-        by self.timebase_origin in divs.""",
-        validator=strict_discrete_set,
-        values=list(range(11))
-    )
-
     timebase_scale = Instrument.control(
         #good
-        "vbs? 'return = app.acquisition.horizontal.HorScale'",
-        "vbs 'app.acquisition.horizontal.HorScale = %.4E'",
+        ":TIMebase:SCALe?",
+        ":TIMebase:SCALe %.4E",
         """ A float parameter that sets the horizontal scale (units per division) in seconds 
         for the main window."""
     )
@@ -199,19 +187,10 @@ class LecroyT3DSOBase(Instrument):
     # Trigger #
     ###########
 
-    aux_in_coupling = Instrument.control(
-        # good
-        "vbs? 'return = app.acquisition.auxin.Coupling'",
-        """vbs 'app.acquisition.auxin.Coupling = "%s"'""",
-        """ A string control that sets the aux input coupling. Can be DC50, DC1M, or GND""",
-        validator=strict_discrete_set,
-        values=['DC50', 'DC1M', 'GND']
-    )
 
-    trigger_mode = Instrument.control(
-        #good
-        "vbs? 'return = app.acquisition.trigger.Type'",
-        """vbs 'app.acquisition.trigger.Type = "%s"'""",
+    trigger_type = Instrument.control(
+        ":TRIGger:TYPE?",
+        """:TRIGger:TYPE %s""",
         """ A string control that sets the trigger mode. Only EDGE is implemented. 
         EDGE is the most common option""",
         validator=strict_discrete_set,
@@ -221,18 +200,18 @@ class LecroyT3DSOBase(Instrument):
 
     trigger_edge_slope = Instrument.control(
         #good
-        "vbs? 'return = app.acquisition.trigger.edge.Slope'",
-        """vbs 'app.acquisition.trigger.edge.Slope = "%s"'""",
+        ":TRIGger:EDGE:SLOPe?",
+        """:TRIGger:EDGE:SLOPe? %s""",
         """ A string control that sets the slope of the edge trigger to:
-        'POSITIVE', 'NEGATIVE', or 'EITHER' """,
+        'RIS', 'FALL', or 'ALT' """,
         validator=strict_discrete_set,
-        values=['POSITIVE', 'NEGATIVE','EITHER']
+        values=['RIS', 'FALL', 'ALT']
     )
 
     trigger_coupling = Instrument.control(
         # good
-        "vbs? 'return = app.acquisition.trigger.edge.Coupling'",
-        """vbs 'app.acquisition.trigger.edge.Coupling = "%s"'""",
+        ":TRIGger:EDGE:COUPling?",
+        """:TRIGger:EDGE:COUPling %s""",
         """ A string control that sets the coupling of the trigger:
         'DC', 'AC', 'LFREJ', 'HFREJ' """,
         validator=strict_discrete_set,
