@@ -40,6 +40,7 @@ tdiv_enum=[100e-12,200e-12,500e-12,\
  1e-3,2e-3,5e-3,10e-3,20e-3,50e-3,100e-3,200e-3,500e-3,\
  1,2,5,10,20,50,100,200,500,1000]
 
+STR_BOOLS = {True: 'ON', False: 'OFF'}
 
 class ChannelBase():
     """ Implementation of a Lecroy T3DSO channel. This scope isn't running windows and
@@ -50,7 +51,7 @@ class ChannelBase():
      """
 
     BOOLS = {True: -1, False: 0}
-    STR_BOOLS = {True: 'ON', False: 'OFF'}
+    
 
     bwlimit = Instrument.control(
         'BWLimit?', "BWLimit %s",
@@ -76,8 +77,6 @@ class ChannelBase():
     offset = Instrument.control(
         'OFFset?', "OFFset %f",
         """A parameter that gets or sets the offset of the channel""",
-        validator=strict_discrete_set,
-        values=['DC', 'AC', 'GND'],
     )
 
     scale = Instrument.control(
@@ -194,14 +193,16 @@ class LecroyT3DSOBase(Instrument):
         """ A string control that sets the trigger mode. Only EDGE is implemented. 
         EDGE is the most common option""",
         validator=strict_discrete_set,
-        values=['EDGE']
+        values=['EDGE', 'PULSE','SLOPe','INTerval','PATTern','RUNT','QUALified',
+                'WINDow','DROPout','VIDeo','QUALified','NTHEdge','DELay','SETuphold',
+                'IIC','SPI','UART','LIN','CAN','FLEXray','CANFd','IIS','1553B','SENT']
     )
 
 
     trigger_edge_slope = Instrument.control(
         #good
         ":TRIGger:EDGE:SLOPe?",
-        """:TRIGger:EDGE:SLOPe? %s""",
+        """:TRIGger:EDGE:SLOPe %s""",
         """ A string control that sets the slope of the edge trigger to:
         'RIS', 'FALL', or 'ALT' """,
         validator=strict_discrete_set,
@@ -218,52 +219,41 @@ class LecroyT3DSOBase(Instrument):
         values=['DC', 'AC', 'LFREJ', 'HFREJ']
     )
 
+    impedance = Instrument.control(
+        ':TRIGger:EDGE:IMPedance?',
+          ":TRIGger:EDGE:IMPedance %s",
+        """A string parameter that gets or sets the input impedance of the EXT 
+        trigger channel""",
+        validator=strict_discrete_set,
+        values=['ONEM', 'FIFT', 'ONEMeg', 'FIFTY'],
+    )
+
     trigger_edge_level = Instrument.control(
         #good
-        "vbs? 'return = app.acquisition.trigger.edge.Level'",
-        """vbs 'app.acquisition.trigger.edge.Level = %.3E'""",
+        ":TRIGger:EDGE:LEVel?'",
+        """:TRIGger:EDGE:LEVel %.4E""",
         """ A float control that sets the trigger level in V, range is +-0.82 V""",
         validator=strict_range,
         values=[-0.82, 0.82]
     )
 
-    def setup_sequence(self, sequence_on, n_sequences=1):
-        """
-        Turn sequence mode on or off with sequence_on = [True, False] and
-        if True, specify the number of sequences to record. Memory depth is left
-        to the scope to optimize. Note: turning sequence on or off will invoke an
-        auto-calibrate.
-        """
-        if sequence_on:
-            self.write(f'SEQ ON, {n_sequences}')
-        else:
-            self.write('SEQ OFF')
-
-    def sequence_status(self):
-        """Returns the status of the sequencing mode on the oscillscope."""
-        status = self.ask('SEQ?').strip()
-        state, nseq, memdepth = status.split(',')
-        mapper = {'ON': True, 'OFF': False}
-        return {'is_on': mapper[state], 'n_sequences': int(nseq), 'memdepth': float(memdepth)}
-
-
-    def clear_sweeps(self):
-        self.write("""VBS 'app.ClearSweeps'""")
 
     def trigger_edge_source(self, channel):
         #good
         """
-        Function to set the edge trigger source
+        Function to set the edge trigger source. Does not implement Digital
+        Line. 
         :param channel: Integer corresponding to a given channel (0 is aux)
         :return:
         """
         if channel == 0:
-            source = 'Ext'
+            source = 'EX'
         elif channel in [1, 2, 3, 4, 5, 6, 7, 8]:
             source = 'C%d' % channel
         else:
             raise ValueError(f'{channel} not a valid trigger source')
-        self.write(f"""VBS 'app.Acquisition.trigger.edge.Source ="{source}"'""")
+        self.write(f""":TRIGger:EDGE:SOURce %s""")
+
 
     def set_edge_trigger(self, source, level, slope):
         """
@@ -274,45 +264,176 @@ class LecroyT3DSOBase(Instrument):
         self.trigger_edge_slope = slope
         self.trigger_edge_source(source)
 
+
+    n_sequences = Instrument.control(
+        ":ACQ:SEQ:COUN?",
+        ":ACQ:SEQ:COUN %d",
+        """Set the number of sequences in sequence mode"""
+    )
+
+    sequence_status = Instrument.control(
+        ":ACQ:SEQ?",
+        ":ACQ:SEQ %s",
+        """Turns sequence mode on or off""",
+        validator=strict_discrete_set,
+        values=STR_BOOLS,
+        map_values=True
+    )
+    
+
+
+    def setup_sequence(self, sequence_on, n_sequences=1):
+        """
+        Turn sequence mode on or off with sequence_on = [True, False] and
+        if True, specify the number of sequences to record. Memory depth is left
+        to the scope to optimize. Note: turning sequence on or off will invoke an
+        auto-calibrate.
+        """
+        if sequence_on:
+            self.sequence_status = True
+            self.n_sequences = n_sequences
+
+        else:
+            self.sequence_status = False
+
+    def sequence_status(self):
+        """Returns the status of the sequencing mode on the oscillscope."""
+    
+        return {'is_on': self.sequence_status,
+                 'n_sequences': int(self.n_sequences),
+                'memdepth': float(self.acquisition_mdepth)}
+
+
+    def clear_sweeps(self):
+        self.write(""":ACQuire:CSWeep""")
+
+    
+
     ###############
     # Acquisition #
     ###############
 
-    run_state = Instrument.control(
-        "TRMD?", "TRMD %s",
-        """Control of the instrument run state. Can be:
-         NORM, STOP, SINGLE, AUTO""",
+    interpolation = Instrument.control(
+        ":ACQuire:INTerpolation?", ":ACQuire:INTerpolation %s",
+        """Control of the interpolation mode of the scope. ON is sinc, OFF is linear""",
         validator=strict_discrete_set,
-        values=['NORM', 'STOP', 'SINGLE', 'AUTO']
+        values=['ON','OFF']
+    )
+
+    acquisition_memory_mode = Instrument.control(
+        ":ACQuire:MMANagement?",
+          ":ACQuire:MMANanagement %s",
+        """Control of the memory mode of the oscilloscope.
+        
+        -AUTO mode maintain the maximum sampling rate, and
+        automatically set the memory depth and sampling rate
+        according to the time base.
+        - FSRate mode is Fixed Samling Rate, maintain the
+        specified sampling rate and automatically set the
+        memory depth according to the time base.
+        - FMDepth mode is Fixed Memory Depth, the
+        oscilloscope automatically sets the sampling rate
+        according to the storage depth and time base
+        """,
+        validator=strict_discrete_set,
+        values=['AUTO', 'FSRate', 'FMDepth', 'FSR', 'FMD']
+    )
+
+
+    acquisition_mode = Instrument.control(
+        ":ACQuire:MODE?",
+          ":ACQuire:MODE %s",
+        """Control of the acquisition mode of the oscilloscope.
+        
+        • YT mode plots amplitude (Y) vs. time (T)
+        • XY mode plots channel X vs. channel Y, commonly
+        referred to as a Lissajous curve
+        • Roll mode plots amplitude (Y) vs. time (T) as in YT
+        mode, but begins to write the waveforms from the
+        right-hand side of the display. This is similar to a “strip
+        chart” recording and is ideal for slow events that
+        happen a few times/second.
+        """,
+        validator=strict_discrete_set,
+        values=['YT', 'XY', 'ROLL']
+    )
+
+    acquisition_mdepth = Instrument.control(
+        ":ACQuire:MDEPth?",
+          ":ACQuire:MDEPth %s",
+        """Control of the maximum memory depth of the oscilloscope.
+        options are {2.5k|5k|25k|50k|250k|500k|2.5M|5M|12.5M|25M|
+        50M|125M|250M|250M|500M}
+        """,
+        validator=strict_discrete_set,
+        values=['2.5k','5k','25k','50k','250k''500k','2.5M','5M','12.5M','25M',
+                '50M','125M','250M','250M','500M']
+    )
+
+    acquisition_nacq = Instrument.measurement(
+        ":ACQuire:NUMAcq?",
+        """The query returns the number of waveform acquisitions that have
+            occurred since starting acquisition. This value is reset to zero
+            when any acquisition,horizontal, or vertical arguments that affect
+            the waveform are changed.""",
+    )
+
+    acquisition_srate = Instrument.control(
+        ":ACQuire:SRATe?",
+          ":ACQuire:SRATe %.4f",
+        """Control of the sampling rate of the oscilloscope when in fixed sampling
+        rate mode.
+        """
+    )
+
+    average_n = Instrument.control(
+        ":ACQuire:TYPE?",
+        ":ACQuire:TYPE AVERage,%d",
+        """Turns on averaging and sets to requested number of averages. Not available when in 
+        sequence mode."""
+    )
+
+    acquisition_type = Instrument.control(
+        ":ACQuire:TYPE?",
+          ":ACQuire:TYPE %s",
+        """Control of the acquisition type, self.average_n uses the same command to
+        set the number of averages. In reality you should only use this to set and confirm
+        that the type is NORM.
+        """,
+        validator=strict_discrete_set,
+        values=['NORM']
+    )
+
+    run_mode = Instrument.control(
+        ":TRIGger:MODE?", ":TRIGger:MODE %s",
+        """Control of the instrument run state. Can be:
+         NORM, SINGLE, AUTO""",
+        validator=strict_discrete_set,
+        values=['NORM', 'SINGLE', 'AUTO']
+    )
+
+    run_state = Instrument.measurement(
+        ":TRIGger:STATUS?",
+        """Returns the status of the scope. Can be Arm, Ready, Auto, Trig'd, Stop, Roll.
+        Yes, you read that right, first letter capitalized, full word.""",
     )
 
     def run(self):
         #good
         """ Starts repetitive acquisitions. This is the same as pressing the Run key on the front panel."""
-        self.run_state = 'NORM'
+        self.write(':TRIG:RUN')
 
     def stop(self):
         #good
         """  Stops the acquisition. This is the same as pressing the Stop key on the front panel."""
-        self.run_state = 'STOP'
+        self.write(':TRIG:STOP')
+
 
     def single(self):
         #good
         """ Causes the instrument to acquire a single trigger of data.
         This is the same as pressing the Single key on the front panel. """
         self.run_state = 'SINGLE'
-
-    def wait_for_idle(self, basewait=0.01, timeout=5):
-        cmd = f"""vbs? 'return=app.WaitUntilIdle({basewait})"""
-        returned = int(self.ask(cmd))
-        breaker = int(timeout / basewait)
-        if breaker <= 0:
-            raise ValueError(f'timeout {timeout} is shorter than wait {basewait}')
-        i = 0
-        while returned == 0. and i < breaker:
-            sleep(basewait)
-            returned = int(self.ask(cmd))
-            i += 1
 
 
     def wait_for_op(self, timeout=3600, should_stop=lambda: False):
@@ -388,7 +509,7 @@ class LecroyT3DSOBase(Instrument):
 
 
     @property
-    def waveform_preamble(self, channel=None):
+    def waveform_preamble(self):
         #good
         """ Get preamble information for the selected waveform source as a dict with the following keys:
             -'data_bytes' : the number of bytes transfered. If you request the full 12 bits of precision 
@@ -406,7 +527,7 @@ class LecroyT3DSOBase(Instrument):
             - 'code' : waveform data out / code * vdiv = actual signal,
             - 'tdiv' : time per division
            """
-        return self._waveform_preamble(channel=channel)
+        return self._waveform_preamble()
 
 
 
@@ -455,7 +576,7 @@ class LecroyT3DSOBase(Instrument):
         while True:
             err = self.values(":SYST:ERR?")
             if int(err[0]) != 0:
-                errmsg = "Lecroy MAUI: %s: %s" % (err[0], err[1])
+                errmsg = "Lecroy T3DSO: %s: %s" % (err[0], err[1])
                 log.error(errmsg + "\n")
             else:
                 break
@@ -469,9 +590,6 @@ class LecroyT3DSOBase(Instrument):
         """ Factory default setup, no user settings remain unchanged. """
         self.write("*RST")
 
-    def default_setup(self):
-        """ Default setup, some user settings (like preferences) remain unchanged. """
-        self.write("""vbs 'app.settodefaultsetup' """)
 
     def timebase_setup(self, offset=None, horizontal_range=None, scale=None):
         """ Set up timebase. Unspecified parameters are not modified. Modifying a single parameter might
@@ -488,7 +606,7 @@ class LecroyT3DSOBase(Instrument):
         if scale is not None: self.timebase_scale = scale
 
 
-    def _waveform_preamble(self, channel=None):
+    def _waveform_preamble(self):
         #good
         """
         Reads waveform preamble and converts it to a more convenient dict of values.
