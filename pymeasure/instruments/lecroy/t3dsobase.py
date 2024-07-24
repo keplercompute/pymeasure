@@ -252,7 +252,7 @@ class LecroyT3DSOBase(Instrument):
             source = 'C%d' % channel
         else:
             raise ValueError(f'{channel} not a valid trigger source')
-        self.write(f""":TRIGger:EDGE:SOURce %s""")
+        self.write(f""":TRIGger:EDGE:SOURce {source}""")
 
 
     def set_edge_trigger(self, source, level, slope):
@@ -290,13 +290,15 @@ class LecroyT3DSOBase(Instrument):
         auto-calibrate.
         """
         if sequence_on:
+            self.acquisition_type = 'NORM'
+            self.wait_for_op()
             self.sequence_status = True
             self.n_sequences = n_sequences
 
         else:
             self.sequence_status = False
 
-    def sequence_status(self):
+    def sequence_status_dict(self):
         """Returns the status of the sequencing mode on the oscillscope."""
     
         return {'is_on': self.sequence_status,
@@ -433,7 +435,7 @@ class LecroyT3DSOBase(Instrument):
         #good
         """ Causes the instrument to acquire a single trigger of data.
         This is the same as pressing the Single key on the front panel. """
-        self.run_state = 'SINGLE'
+        self.run_mode = 'SINGLE'
 
 
     def wait_for_op(self, timeout=3600, should_stop=lambda: False):
@@ -541,7 +543,7 @@ class LecroyT3DSOBase(Instrument):
         self.waveform_format = "WORD"
         self._waveform_sparsing = sparsing
         self._waveform_source = source
-        data = self.adapter.connection.query_binary_values(f"WAV:DATA?", datatype='h')
+        data = self.adapter.connection.query_binary_values(f":WAV:DATA?", datatype='h')
 
         return data
     
@@ -606,7 +608,7 @@ class LecroyT3DSOBase(Instrument):
         if scale is not None: self.timebase_scale = scale
 
 
-    def _waveform_preamble(self):
+    def _waveform_preamble(self, channel=None):
         #good
         """
         Reads waveform preamble and converts it to a more convenient dict of values.
@@ -617,38 +619,40 @@ class LecroyT3DSOBase(Instrument):
 
 
         """
-        self.write("WAV:PREamble?")
+        if channel is not None:
+            self._waveform_source=channel
+        self.write(":WAV:PREamble?")
         recv_raw = self.adapter.connection.read_raw()
         # there is always a preable of #9 then 9 digits representing the number
         # of bytes. Most of those are 0's as the preamble is like 356 bytes.
         # This is the standard format for binary transfer. I could be smart
         # and read the #9 and then add the 9 to the first two bytes, but I
         # didnt'. I hope no one pays for this sin later. -Neal
-        recv = recv_raw[11:]
+        recv = recv_raw[recv_raw.find(b'#')+11:]
         WAVE_ARRAY_1 = recv[60:63+1]
         wave_array_count = recv[116:119+1]
         first_point = recv[132:135+1]
         sp = recv[136:139+1]
         v_scale = recv[156:159+1]
         v_offset = recv[160:163+1]
-        interval = recv[176:179+1]
+        horiz_interval = recv[176:179+1]
         code_per_div = recv[164:167 + 1]
         delay = recv[180:187+1]
         tdiv = recv[324:325+1]
         probe = recv[328:331+1]
         probe = struct.unpack('f',probe)[0]
         tdiv_index = struct.unpack('h',tdiv)[0]
-        interval = struct.unpack('f',interval)[0]
-        nearestlog = int(np.log10(interval))
-        rational = interval / 10**(nearestlog)
+        horiz_interval = struct.unpack('f',horiz_interval)[0]
+        nearestlog = int(np.log10(horiz_interval))
+        rational = horiz_interval / 10**(nearestlog)
         rational = np.round(rational, 7)
-        interval = rational * 10**(nearestlog)
+        horiz_interval = rational * 10**(nearestlog)
         ddict={
             'data_bytes' : struct.unpack('i',WAVE_ARRAY_1)[0],
             'point_num' : struct.unpack('i',wave_array_count)[0],
             'fp' : struct.unpack('i',first_point)[0],
             'sp' : struct.unpack('i',sp)[0],
-            'interval' : interval,
+            'xincrement' : horiz_interval,
             'delay' : struct.unpack('d',delay)[0],
             'probe' : probe,
             'vdiv' : np.round(struct.unpack('f',v_scale)[0], 8)*probe,
