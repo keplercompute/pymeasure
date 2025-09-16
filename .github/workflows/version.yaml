@@ -16,5 +16,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          file: pymeasure/pymeasure/VERSION
+          file: pymeasure/VERSION
           pattern: (.+?)
