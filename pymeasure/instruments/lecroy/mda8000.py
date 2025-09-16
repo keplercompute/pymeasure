@@ -117,3 +117,10 @@ class LecroyWR8000(LecroyMAUIBase):
                 log.error(errmsg + "\n")
             else:
                 break
+
+    @property
+    def is_trigger_ready(self):
+        if self.run_state != 'STOP':
+            return True
+        else:
+            return False
