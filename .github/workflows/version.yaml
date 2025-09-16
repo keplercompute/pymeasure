@@ -2,7 +2,7 @@ name: Verify Python Version Bump
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   verify_version:
