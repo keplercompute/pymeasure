@@ -305,6 +305,8 @@ class LecroyMAUIBase(Instrument):
                 self.write(f'SEQ ON, {n_sequences}, {max_size}')
             else:
                 self.write(f'SEQ ON, {n_sequences}')
+
+            self.write("vbs 'app.Display.SegmentMode=\"Overlay\"'")
         else:
             self.write('SEQ OFF')
 
