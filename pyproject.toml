@@ -29,6 +29,13 @@ dependencies = [
     "matplotlib",
     ]
 
+[project.optional-dependencies]
+web = [
+    "flask>=3.0",
+    "flask-socketio>=5.3",
+    "bokeh>=3.3",
+    ]
+
 [tool.setuptools.dynamic]
 readme = { file = ["README.md"] }
 

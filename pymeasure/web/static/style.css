@@ -1,0 +1,452 @@
+/* ================================================================
+   Base reset / typography
+================================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background: #1e1e1e;
+  color: #ddd;
+  font-size: 14px;
+}
+
+/* ================================================================
+   Two-column flex layout
+================================================================ */
+#layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+#left-panel {
+  width: 300px;
+  min-width: 300px;
+  overflow-y: auto;
+  border-right: 1px solid #333;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #242424;
+}
+
+#right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ================================================================
+   Left panel sections
+================================================================ */
+.panel-section {
+  margin-bottom: 12px;
+}
+
+.panel-section-title {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  border-bottom: 1px solid #333;
+  margin-bottom: 6px;
+  padding-bottom: 2px;
+}
+
+/* ================================================================
+   Parameter form rows
+================================================================ */
+.param-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.param-label {
+  width: 160px;
+  min-width: 160px;
+  font-size: 0.85em;
+  color: #bbb;
+  padding-right: 6px;
+  word-break: break-word;
+}
+
+.param-input {
+  flex: 1;
+  background: #2e2e2e;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #ddd;
+  padding: 3px 6px;
+  font-size: 0.85em;
+  min-width: 0;
+}
+
+.param-input:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+/* Checkboxes don't need flex:1 */
+.param-checkbox {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.param-suffix {
+  margin-left: 4px;
+  color: #888;
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+select.param-input {
+  cursor: pointer;
+}
+
+/* ================================================================
+   Buttons
+================================================================ */
+.btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  background: #444;
+  color: #ddd;
+  font-size: 0.85em;
+  transition: background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #555;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #2196f3;
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1976d2;
+}
+
+.btn-danger {
+  background: #f44336;
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #d32f2f;
+}
+
+/* ================================================================
+   Tab bar
+================================================================ */
+.tab-bar {
+  display: flex;
+  flex-shrink: 0;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  padding: 0 4px;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #888;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: #ccc;
+}
+
+.tab-btn.active {
+  color: #2196f3;
+  border-bottom-color: #2196f3;
+}
+
+/* ================================================================
+   Tab content panels
+================================================================ */
+.tab-content {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+/* ================================================================
+   Browser table
+================================================================ */
+#browser-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82em;
+}
+
+#browser-table th,
+#browser-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #333;
+  text-align: left;
+  vertical-align: middle;
+}
+
+#browser-table thead th {
+  background: #1a1a1a;
+  color: #888;
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+#browser-table tbody tr:hover {
+  background: #2a2a2a;
+}
+
+#browser-table tbody tr.selected {
+  background: #1e3a5a;
+}
+
+/* Visibility checkbox column */
+#browser-table td:first-child {
+  width: 32px;
+  text-align: center;
+}
+
+/* ================================================================
+   Status badges
+================================================================ */
+.status-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-queued {
+  background: #555;
+  color: #bbb;
+}
+
+.status-running {
+  background: #1565c0;
+  color: #90caf9;
+}
+
+.status-finished {
+  background: #1b5e20;
+  color: #a5d6a7;
+}
+
+.status-failed {
+  background: #b71c1c;
+  color: #ef9a9a;
+}
+
+.status-aborted {
+  background: #bf360c;
+  color: #ffcc80;
+}
+
+/* ================================================================
+   Progress bar
+================================================================ */
+.progress-bar-container {
+  background: #333;
+  border-radius: 3px;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  background: #4caf50;
+  height: 8px;
+  width: 0%;
+  transition: width 0.3s ease;
+  border-radius: 3px;
+}
+
+/* ================================================================
+   Sequencer table
+================================================================ */
+#seq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82em;
+}
+
+#seq-table th,
+#seq-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #333;
+  text-align: left;
+  vertical-align: middle;
+}
+
+#seq-table thead th {
+  background: #1a1a1a;
+  color: #888;
+  font-size: 0.82em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+#seq-table tbody tr:hover {
+  background: #2a2a2a;
+}
+
+#seq-table tbody tr.selected {
+  background: #1e3a5a;
+}
+
+#seq-table td input,
+#seq-table td select {
+  width: 100%;
+  background: #2e2e2e;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #ddd;
+  padding: 2px 4px;
+  font-size: 0.85em;
+}
+
+#seq-table td input:focus,
+#seq-table td select:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+/* ================================================================
+   Experiment browser pane (always visible, below tabs)
+================================================================ */
+#browser-pane {
+  flex-shrink: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  border-top: 2px solid #333;
+  background: #1a1a1a;
+}
+
+/* ================================================================
+   Bokeh plot area
+================================================================ */
+#bokeh-plot {
+  flex: 1;
+  overflow: auto;
+  padding: 4px;
+}
+
+#bokeh-plot .bk-root {
+  width: 100% !important;
+}
+
+#plot-axis-selectors label {
+  color: #888;
+  font-size: 0.85em;
+}
+
+/* ================================================================
+   Log output
+================================================================ */
+#log-output {
+  background: #111;
+  color: #0f0;
+  font-family: monospace;
+  font-size: 0.8em;
+  padding: 8px;
+  margin: 0;
+  overflow-y: auto;
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ================================================================
+   Context menu
+================================================================ */
+#context-menu {
+  position: absolute;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  z-index: 1000;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  padding: 4px 0;
+}
+
+.context-menu-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: #ddd;
+  user-select: none;
+}
+
+.context-menu-item:hover {
+  background: #3a3a3a;
+}
+
+.context-menu-item.danger {
+  color: #ef9a9a;
+}
+
+.context-menu-item.danger:hover {
+  background: #4a2020;
+}
+
+/* ================================================================
+   Scrollbar styling (webkit)
+================================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

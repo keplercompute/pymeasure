@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instrument Control</title>
+
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+
+  <!-- Bokeh CSS/JS (injected by Flask via bokeh.resources) -->
+  {{ bokeh_css | safe }}
+  {{ bokeh_js | safe }}
+
+  <!-- App stylesheet -->
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- ================================================================
+       Two-column layout
+  ================================================================ -->
+  <div id="layout">
+
+    <!-- ============================================================
+         LEFT PANEL
+    ============================================================ -->
+    <div id="left-panel">
+
+      <!-- ── Input Parameters ─────────────────────────────────── -->
+      <div class="panel-section">
+        <div class="panel-section-title">Input Parameters</div>
+        <form id="params-form">
+          {% for param in procedure_params %}
+          <div
+            class="param-row"
+            id="param-row-{{ param.key }}"
+            data-group-by="{{ param.group_by | tojson | e }}"
+          >
+            <label class="param-label" for="param-{{ param.key }}">
+              {{ param.name }}
+            </label>
+
+            {% if param.type == "float" or param.type == "integer" %}
+              <input
+                class="param-input"
+                type="number"
+                id="param-{{ param.key }}"
+                name="{{ param.key }}"
+                value="{{ param.default }}"
+                {% if param.minimum is not none %}min="{{ param.minimum }}"{% endif %}
+                {% if param.maximum is not none %}max="{{ param.maximum }}"{% endif %}
+                {% if param.type == "integer" %}step="1"{% else %}step="any"{% endif %}
+              />
+
+            {% elif param.type == "boolean" %}
+              <input
+                class="param-input param-checkbox"
+                type="checkbox"
+                id="param-{{ param.key }}"
+                name="{{ param.key }}"
+                {% if param.default %}checked{% endif %}
+              />
+
+            {% elif param.type == "list" %}
+              <select
+                class="param-input"
+                id="param-{{ param.key }}"
+                name="{{ param.key }}"
+              >
+                {% for choice in param.choices %}
+                <option
+                  value="{{ choice }}"
+                  {% if choice == param.default %}selected{% endif %}
+                >{{ choice }}</option>
+                {% endfor %}
+              </select>
+
+            {% else %}{# string #}
+              <input
+                class="param-input"
+                type="text"
+                id="param-{{ param.key }}"
+                name="{{ param.key }}"
+                value="{{ param.default if param.default is not none else '' }}"
+              />
+            {% endif %}
+
+            {% if param.units %}
+              <span class="param-suffix">{{ param.units }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </form>
+      </div><!-- /Input Parameters -->
+
+      <!-- ── Save Directory ───────────────────────────────────── -->
+      <div class="panel-section">
+        <div class="panel-section-title">Save Directory</div>
+        <div class="param-row">
+          <input
+            class="param-input"
+            type="text"
+            id="directory-input"
+            placeholder="/path/to/data"
+            style="width:100%;"
+          />
+        </div>
+      </div>
+
+      <!-- ── Queue / Abort ────────────────────────────────────── -->
+      <div class="panel-section">
+        <div style="display:flex; gap:8px;">
+          <button id="queue-btn" class="btn btn-primary" type="button">Queue</button>
+          <button id="abort-btn" class="btn btn-danger" type="button" disabled>Abort</button>
+        </div>
+      </div>
+
+      <!-- ── Sequencer ────────────────────────────────────────── -->
+      <div class="panel-section">
+        <div class="panel-section-title">Sequencer</div>
+
+        <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:6px;">
+          <button id="seq-add-root-btn"  class="btn" type="button">Add Root</button>
+          <button id="seq-add-child-btn" class="btn" type="button">Add Child</button>
+          <button id="seq-remove-btn"    class="btn btn-danger" type="button">Remove</button>
+          <button id="seq-load-btn"      class="btn" type="button">Load File</button>
+          <button id="seq-queue-btn"     class="btn btn-primary" type="button">Queue Sequence</button>
+        </div>
+
+        <!-- Hidden file input for loading sequence files -->
+        <input type="file" id="seq-file-input" style="display:none;" accept=".csv,.json,.txt" />
+
+        <div style="overflow-x:auto;">
+          <table id="seq-table">
+            <thead>
+              <tr>
+                <th>Level</th>
+                <th>Parameter</th>
+                <th>Sequence</th>
+              </tr>
+            </thead>
+            <tbody id="seq-tbody">
+              <!-- Rows injected by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div><!-- /Sequencer -->
+
+    </div><!-- /left-panel -->
+
+    <!-- ============================================================
+         RIGHT PANEL
+    ============================================================ -->
+    <div id="right-panel">
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="plot">Plot</button>
+        <button class="tab-btn"        data-tab="log">Log</button>
+      </div>
+
+      <!-- ── Plot tab (default active) ────────────────────────── -->
+      <div id="tab-plot" class="tab-content active" data-tab="plot">
+        <div id="plot-axis-selectors" style="display:flex; align-items:center; gap:12px; padding:6px 8px; flex-shrink:0;">
+          <label for="x-axis-select" style="font-size:0.85em;">X axis:</label>
+          <select id="x-axis-select" class="param-input" style="min-width:120px;">
+            {% for col in data_columns %}
+            <option value="{{ col }}" {% if col == x_axis %}selected{% endif %}>{{ col }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="y-axis-select" style="font-size:0.85em;">Y axis:</label>
+          <select id="y-axis-select" class="param-input" style="min-width:120px;">
+            {% for col in data_columns %}
+            <option value="{{ col }}" {% if col == y_axis %}selected{% endif %}>{{ col }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Bokeh plot div injected here -->
+        <div id="bokeh-plot" style="flex:1; overflow:auto;">
+          {{ bokeh_div | safe }}
+        </div>
+      </div>
+
+      <!-- ── Log tab ──────────────────────────────────────────── -->
+      <div id="tab-log" class="tab-content" data-tab="log">
+        <pre id="log-output"></pre>
+      </div>
+
+      <!-- ── Experiment browser (always visible below tabs) ───── -->
+      <div id="browser-pane">
+        <div id="browser-toolbar" style="display:flex; align-items:center; gap:6px; padding:4px 6px; border-bottom:1px solid #333;">
+          <button id="hide-all-btn" class="btn" type="button" style="font-size:0.78em; padding:2px 8px;">Hide All</button>
+        </div>
+        <div style="overflow:auto; flex:1;">
+          <table id="browser-table">
+            <thead>
+              <tr>
+                <th></th>{# show/hide checkbox #}
+                <th>Filename</th>
+                <th>Status</th>
+                <th>Progress</th>
+              </tr>
+            </thead>
+            <tbody id="browser-tbody">
+              <!-- Rows injected by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /right-panel -->
+
+  </div><!-- /layout -->
+
+
+  <!-- Bokeh embed script (must come after bokeh_div) -->
+  {{ bokeh_script | safe }}
+
+  <!-- Bootstrap: pass server-rendered data to app.js BEFORE app.js loads -->
+  <script>
+    window.PROCEDURE_PARAMS = {{ procedure_params | tojson }};
+    window.DATA_COLUMNS     = {{ data_columns | tojson }};
+    window.paramNames       = {{ seq_param_names | tojson }};
+    window.defaultXAxis     = {{ x_axis | tojson }};
+    window.defaultYAxis     = {{ y_axis | tojson }};
+
+    // Bokeh glue — called by app.js when a new experiment is queued.
+    // Adds a new line glyph to the already-rendered Bokeh figure and stores
+    // the source + renderer so app.js can stream data and toggle visibility.
+    window.bokehSources   = {};
+    window.bokehRenderers = {};
+
+    window.addCurveToPlot = function(experiment_id, color, label) {
+      // Bokeh 3.x: get the figure model from the embedded document
+      var docs = Bokeh.documents;
+      if (!docs || docs.length === 0) return;
+      var doc = docs[0];
+      var roots = doc.roots();
+      if (!roots || roots.length === 0) return;
+      var plot = roots[0];
+
+      // Use Bokeh.Models.<Name> to construct model instances (Bokeh 3.x API)
+      var source = new Bokeh.Models.ColumnDataSource({ data: { x: [], y: [] } });
+      var glyph = new Bokeh.Models.Line({
+        x: { field: 'x' },
+        y: { field: 'y' },
+        line_color: color,
+        line_width: 1.5,
+      });
+      var renderer = new Bokeh.Models.GlyphRenderer({
+        data_source: source,
+        glyph: glyph,
+        name: experiment_id,
+      });
+
+      plot.renderers = plot.renderers.concat([renderer]);
+
+      window.bokehSources[experiment_id]   = source;
+      window.bokehRenderers[experiment_id] = renderer;
+    };
+
+    window.removeCurveFromPlot = function(experiment_id) {
+      var docs = Bokeh.documents;
+      if (!docs || docs.length === 0) return;
+      var doc = docs[0];
+      var roots = doc.roots();
+      roots.forEach(function(root) {
+        if (root.renderers) {
+          // Splice in-place so Bokeh's property system detects the change
+          for (var i = root.renderers.length - 1; i >= 0; i--) {
+            if (root.renderers[i].name === experiment_id) {
+              root.renderers.splice(i, 1);
+            }
+          }
+        }
+      });
+      delete window.bokehSources[experiment_id];
+      delete window.bokehRenderers[experiment_id];
+    };
+  </script>
+
+  <!-- App logic -->
+  <script src="/static/app.js"></script>
+
+</body>
+</html>

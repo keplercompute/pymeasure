@@ -857,9 +857,12 @@ class FeatherResults(FileBasedResults):
             except Exception:
                 # Something went wrong when opening the data
                 self._data = pd.DataFrame(columns=self.procedure.DATA_COLUMNS)
-        else:  # JSON has to be read all at once, no good choices to be made here unfortunately
-            data = feather.read_feather(self.data_filename)
-            self._data = data
+        else:
+            try:
+                data = feather.read_feather(self.data_filename)
+                self._data = data
+            except Exception:
+                pass  # File mid-write; return cached data
 
         return self._data
 
