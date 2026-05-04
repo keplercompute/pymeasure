@@ -562,7 +562,10 @@ class BN675_AWG(Instrument):
         """
         Load an AWG configuration zip at filename filename.
         """
-        self.write(f'MMEM:LOAD:ALL "{filename}"')
+        rootless = filename.split(".")[0]
+        self.write(f'MMEM:LOAD:STATE "{filename}", "{rootless}"')
+        self.wait_for_trigger()
+        self.write(f'RECALL:SETUP "{rootless}"')
 
     def save_awg_setup(self, filename):
         """
