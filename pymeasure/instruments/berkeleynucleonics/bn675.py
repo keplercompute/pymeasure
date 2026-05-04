@@ -573,6 +573,14 @@ class BN675_AWG(Instrument):
         """
         self.write(f'MMEM:STORe:ALL "{filename}"')
 
+    def fetch_zip_binary(self, filename):
+        """
+        Get binary representation of zip at filename.
+        """
+        return self.adapter.connection.query_binary_values(
+            f'MMEM:UPL? "{filename}"', datatype="B", container=bytes
+        )
+
     def transfer_array(self, array, filename):
         """
         Takes an array and saves it to the Saved Pictures directory of the
