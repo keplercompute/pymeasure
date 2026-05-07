@@ -558,13 +558,14 @@ class BN675_AWG(Instrument):
         """
         self.write(f'MMEM:DEL "{filename}"')
 
-    def load_awg_setup(self, filename):
+    def load_awg_setup(self, filename, recall_only=False):
         """
         Load an AWG configuration zip at filename filename.
         """
         rootless = filename.split(".")[0]
-        self.write(f'MMEM:LOAD:STATE "{filename}", "{rootless}"')
-        self.wait_for_trigger()
+        if not recall_only:
+            self.write(f'MMEM:LOAD:STATE "{filename}", "{rootless}"')
+            self.wait_for_trigger()
         self.write(f'RECALL:SETUP "{rootless}"')
 
     def save_awg_setup(self, filename):
