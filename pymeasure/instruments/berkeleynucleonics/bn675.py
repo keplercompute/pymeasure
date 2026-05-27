@@ -31,7 +31,7 @@ class Marker(object):
 
     level = Instrument.control(
         "LEVelb?", "LEVelb %g",
-        """ A proper controlling the level of the marker output. Into 
+        """ A proper controlling the level of the marker output. Into
         50 Ohms the minimum is 1 V and the max is 2.5 V.""",
     )
 
@@ -211,6 +211,35 @@ class Channel(object):
         if patternjumpmode is ITEM.
         """
         self.instrument.write(self._elemprefix + f"PATTERNJUMPTOEntry {code}")
+
+    @property
+    def gotomode(self):
+        return self.instrument.ask(self._elemprefix + f"GOTOMode?")
+
+    @gotomode.setter
+    def gotomode(self, code):
+        """
+        Sets what happens when a pattern code is received. Options are:
+        FIRST: Go to the begin of the sequence
+        PREVIOUS: Go to the previous element of the sequence [last elem if at first]
+        NEXT: Go to the next element of the sequence [first element if last]
+        LAST: Go to the last element of the sequence
+        ITEM: Got to item define patternjumptoentry
+        """
+        self.instrument.write(self._elemprefix + f"GOTOMode {code}")
+
+    @property
+    def gotoentry(self):
+        return self.instrument.ask(self._elemprefix + f"GOTOEntry?")
+
+    @gotoentry.setter
+    def gotoentry(self, entry):
+        """
+        Sets the elem in the sequence to go to when the waveform finishes,
+        if gotomode is ITEM and no jump is initiated. entry is the 1-indexed
+        sequence to jump to
+        """
+        self.instrument.write(self._elemprefix + f"GOTOEntry {entry}")
 
     @property
     def amplitude(self):
