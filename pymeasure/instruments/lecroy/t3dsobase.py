@@ -51,7 +51,7 @@ class ChannelBase():
      """
 
     BOOLS = {True: -1, False: 0}
-    
+
 
     bwlimit = Instrument.control(
         'BWLimit?', "BWLimit %s",
@@ -82,7 +82,7 @@ class ChannelBase():
     scale = Instrument.control(
         # good
         "SCALe?", "SCALe %f",
-        """ A float parameter that specifies the vertical scale, or units per division, in Volts. 
+        """ A float parameter that specifies the vertical scale, or units per division, in Volts.
         Limits are [1e-3,1]"""
     )
 
@@ -167,18 +167,18 @@ class LecroyT3DSOBase(Instrument):
     timebase_offset = Instrument.control(
         ":TIMebase:DELay?",
         ":TIMebase:DELay %.4E",
-        """ A float parameter that sets the time interval in seconds between the trigger 
+        """ A float parameter that sets the time interval in seconds between the trigger
         event and the reference position (at center of screen by default). Positive value means
         trigger is left of the center""",
         validator=strict_range,
-        values=[-2e-4, 1.4999e-3]
+        values=[-5, 5]
     )
 
     timebase_scale = Instrument.control(
         #good
         ":TIMebase:SCALe?",
         ":TIMebase:SCALe %.4E",
-        """ A float parameter that sets the horizontal scale (units per division) in seconds 
+        """ A float parameter that sets the horizontal scale (units per division) in seconds
         for the main window."""
     )
 
@@ -190,7 +190,7 @@ class LecroyT3DSOBase(Instrument):
     trigger_type = Instrument.control(
         ":TRIGger:TYPE?",
         """:TRIGger:TYPE %s""",
-        """ A string control that sets the trigger mode. Only EDGE is implemented. 
+        """ A string control that sets the trigger mode. Only EDGE is implemented.
         EDGE is the most common option""",
         validator=strict_discrete_set,
         values=['EDGE', 'PULSE','SLOPe','INTerval','PATTern','RUNT','QUALified',
@@ -222,7 +222,7 @@ class LecroyT3DSOBase(Instrument):
     impedance = Instrument.control(
         ':TRIGger:EDGE:IMPedance?',
           ":TRIGger:EDGE:IMPedance %s",
-        """A string parameter that gets or sets the input impedance of the EXT 
+        """A string parameter that gets or sets the input impedance of the EXT
         trigger channel""",
         validator=strict_discrete_set,
         values=['ONEM', 'FIFT', 'ONEMeg', 'FIFTY'],
@@ -242,7 +242,7 @@ class LecroyT3DSOBase(Instrument):
         #good
         """
         Function to set the edge trigger source. Does not implement Digital
-        Line. 
+        Line.
         :param channel: Integer corresponding to a given channel (0 is aux)
         :return:
         """
@@ -279,7 +279,7 @@ class LecroyT3DSOBase(Instrument):
         values=STR_BOOLS,
         map_values=True
     )
-    
+
 
 
     def setup_sequence(self, sequence_on, n_sequences=1):
@@ -302,7 +302,7 @@ class LecroyT3DSOBase(Instrument):
 
     def sequence_status_dict(self):
         """Returns the status of the sequencing mode on the oscillscope."""
-    
+
         return {'is_on': self.sequence_status,
                  'n_sequences': int(self.n_sequences),
                 'memdepth': self.acquisition_mdepth}
@@ -311,7 +311,7 @@ class LecroyT3DSOBase(Instrument):
     def clear_sweeps(self):
         self.write(""":ACQuire:CSWeep""")
 
-    
+
 
     ###############
     # Acquisition #
@@ -328,7 +328,7 @@ class LecroyT3DSOBase(Instrument):
         ":ACQuire:MMANagement?",
           ":ACQuire:MMANanagement %s",
         """Control of the memory mode of the oscilloscope.
-        
+
         -AUTO mode maintain the maximum sampling rate, and
         automatically set the memory depth and sampling rate
         according to the time base.
@@ -348,7 +348,7 @@ class LecroyT3DSOBase(Instrument):
         ":ACQuire:MODE?",
           ":ACQuire:MODE %s",
         """Control of the acquisition mode of the oscilloscope.
-        
+
         • YT mode plots amplitude (Y) vs. time (T)
         • XY mode plots channel X vs. channel Y, commonly
         referred to as a Lissajous curve
@@ -393,7 +393,7 @@ class LecroyT3DSOBase(Instrument):
     average_n = Instrument.control(
         ":ACQuire:TYPE?",
         ":ACQuire:TYPE AVERage,%d",
-        """Turns on averaging and sets to requested number of averages. Not available when in 
+        """Turns on averaging and sets to requested number of averages. Not available when in
         sequence mode."""
     )
 
@@ -517,7 +517,7 @@ class LecroyT3DSOBase(Instrument):
     waveform_format = Instrument.control(
         #good
         ":WAVeform:WIDTh?", ":WAVeform:WIDTh %s",
-        """ A string parameter that controls how the data is formatted when sent from the 
+        """ A string parameter that controls how the data is formatted when sent from the
         oscilloscope.  "WORD" or "BYTE". Words are transmitted in big endian by default.
         These are 12 bit ADC's so if you choose byte, you better have good reason to throw away
         those extra four bits""",
@@ -530,8 +530,8 @@ class LecroyT3DSOBase(Instrument):
     def waveform_preamble(self):
         #good
         """ Get preamble information for the selected waveform source as a dict with the following keys:
-            -'data_bytes' : the number of bytes transfered. If you request the full 12 bits of precision 
-            be transfered this will always be double the number of actual points. However, the default is 
+            -'data_bytes' : the number of bytes transfered. If you request the full 12 bits of precision
+            be transfered this will always be double the number of actual points. However, the default is
             to only transmit bytes, which returns a lower precision result but only 1 byte per point
             - 'point_num' : number of points transfered, see note above
             - 'fp' : the first point of the waveform, relevant if you are returning a subset of the total wf
@@ -564,7 +564,7 @@ class LecroyT3DSOBase(Instrument):
         data = self.adapter.connection.query_binary_values(f":WAV:DATA?", datatype='h')
 
         return data
-    
+
     def waveform_data_formatted(self, source, sparsing=1):
         """
         Get the full trace of the data and covert it to voltage, not just the integers the scope
