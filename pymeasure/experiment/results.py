@@ -43,9 +43,23 @@ from .procedure import Procedure, UnknownProcedure
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
 try:
     import pyarrow as pa
     from pyarrow import feather
+    import pyarrow.parquet as pq
 except:
     log.info('Pyarrow not installed, feather not available')
 
@@ -616,13 +630,13 @@ class JSONFileHandler(logging.FileHandler):
 
         for key in record.keys():
             if key in data.keys():
-                for column, array in data.items():
-                    if isinstance(record[column], (list, tuple)):
-                        data[column] = list(np.concatenate([array, record[column]]))
-                    elif isinstance(record[column], (float, int, str, bool,)):
-                        array.append(record[column])
-                    else:
-                        raise TypeError(f'got unexpected type for {record[column]}, {type(record[column])}')
+                if isinstance(record[key], (list, tuple, np.ndarray)):
+                    data[key] = list(np.concatenate([data[key], record[key]]))
+                elif isinstance(record[key], (float, int, str, bool,
+                                              np.integer, np.floating, np.bool_)):
+                    data[key].append(record[key])
+                else:
+                    raise TypeError(f'got unexpected type for {record[key]}, {type(record[key])}')
             else:
                 datum = record[key]
                 if not isinstance(datum, list):
@@ -631,7 +645,7 @@ class JSONFileHandler(logging.FileHandler):
 
         extant[list(extant.keys())[0]] = data
         with open(self.baseFilename, 'w') as f:
-            json.dump(extant, f)
+            json.dump(extant, f, cls=NpEncoder)
 
 class JSONFormatter(logging.Formatter):
     """ Formatter of data results """
@@ -663,8 +677,8 @@ class JSONFormatter(logging.Formatter):
         base_types = {}
         for key, item in parameters.items():
             base_types[key] = item.value
-        self.key = json.dumps(base_types)
-        return json.dumps({self.key: record}, indent=1)
+        self.key = json.dumps(base_types, cls=NpEncoder)
+        return json.dumps({self.key: record}, indent=1, cls=NpEncoder)
 
 
 class JSONResults(FileBasedResults):
@@ -688,13 +702,13 @@ class JSONResults(FileBasedResults):
         param_dict = {}
         for name, parameter in self.parameters.items():
             param_dict[name] = parameter.value
-        return json.dumps(param_dict)
+        return json.dumps(param_dict, cls=NpEncoder)
 
     def create_resources(self):
         header = self.create_header()
         for filename in self.data_filenames:
             with open(filename, 'w') as f:
-                json.dump({header : {}}, f)
+                json.dump({header : {}}, f, cls=NpEncoder)
         self._data = None
 
     @staticmethod
@@ -803,7 +817,7 @@ class FeatherResults(FileBasedResults):
         param_dict = {}
         for name, parameter in self.parameters.items():
             param_dict[name] = parameter.value
-        return json.dumps(param_dict)
+        return json.dumps(param_dict, cls=NpEncoder)
 
     def create_resources(self):
         header = self.create_header()
@@ -893,8 +907,8 @@ class ParquetFileHandler(logging.FileHandler):
 
 
 class ParquetResults(FileBasedResults):
-    """The FeatherResults class provides an interface to read an write data
-    in Feather format in connection with a :class: `.Procedure` object."""
+    """The ParquetResults class provides an interface to read an write data
+    in Parquet format in connection with a :class: `.Procedure` object."""
 
     HANDLER = ParquetFileHandler
     FORMATTER = None
@@ -915,7 +929,7 @@ class ParquetResults(FileBasedResults):
         param_dict = {}
         for name, parameter in self.parameters.items():
             param_dict[name] = parameter.value
-        return json.dumps(param_dict)
+        return json.dumps(param_dict, cls=NpEncoder)
 
     def create_resources(self):
         header = self.create_header()
@@ -927,7 +941,7 @@ class ParquetResults(FileBasedResults):
         newtable = newtable.replace_schema_metadata(new_metadata)
 
         for filename in self.data_filenames:
-            pa.feather.write_feather(newtable, filename)
+            pq.write_table(newtable, filename)
         self._data = None
 
     @staticmethod
@@ -945,7 +959,7 @@ class ParquetResults(FileBasedResults):
         """ Performs a full reloading of the file data, neglecting
         any changes in the comments
         """
-        data = feather.read_feather(self.data_filename)
+        data = pq.read_table(self.data_filename).to_pandas()
         self._data = data
 
     @staticmethod
@@ -953,11 +967,11 @@ class ParquetResults(FileBasedResults):
         """ Returns a Results object with the associated Procedure object and
         data
         """
-        table = feather.read_table(data_filename)
+        table = pq.read_table(data_filename)
         header = table.schema.metadata[b'header']
 
         procedure = ResultsBase.parse_header(header, procedure_class)
-        results = FeatherResults(procedure, data_filename)
+        results = ParquetResults(procedure, data_filename)
         return results
 
     @property
@@ -970,7 +984,7 @@ class ParquetResults(FileBasedResults):
                 # Something went wrong when opening the data
                 self._data = pd.DataFrame(columns=self.procedure.DATA_COLUMNS)
         else:  # JSON has to be read all at once, no good choices to be made here unfortunately
-            data = feather.read_feather(self.data_filename)
+            data = pq.read_table(self.data_filename).to_pandas()
             self._data = data
 
         return self._data
