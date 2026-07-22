@@ -77,12 +77,12 @@ class Keithley2450(Instrument, KeithleyBuffer):
     )
 
     sense_mode = Instrument.control(
-        ":SENS:FUNC?", ":SENS:FUNC \'%s\'",
+        ":SENS:FUNC?", ":SENS:FUNC %s",
         """ A string property that controls the sense mode, which can
         take the values 'current', 'voltage', or 'resistance'.
         can also be used. """,
         validator=strict_discrete_set,
-        values={'current': 'CURR', 'voltage': 'VOLT', 'resistance': 'RES'},
+        values={'current': '"CURR"', 'voltage': '"VOLT"', 'resistance': '"RES"'},
         map_values=True
         )
 
