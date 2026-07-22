@@ -82,7 +82,7 @@ class Keithley2450(Instrument, KeithleyBuffer):
         take the values 'current', 'voltage', or 'resistance'.
         can also be used. """,
         validator=strict_discrete_set,
-        values={'current': '"CURR"', 'voltage': '"VOLT"', 'resistance': '"RES"'},
+        values={'current': '"CURR:DC"', 'voltage': '"VOLT:DC"', 'resistance': '"RES"'},
         map_values=True
         )
 
