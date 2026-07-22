@@ -76,6 +76,16 @@ class Keithley2450(Instrument, KeithleyBuffer):
         cast=bool
     )
 
+    sense_mode = Instrument.control(
+        ":SENS:FUNC?", ":SENS:FUNC \'%s\'",
+        """ A string property that controls the sense mode, which can
+        take the values 'current', 'voltage', or 'resistance'.
+        can also be used. """,
+        validator=strict_discrete_set,
+        values={'current': 'CURR', 'voltage': 'VOLT', 'resistance': 'RES'},
+        map_values=True
+        )
+
     ###############
     # Current (A) #
     ###############
@@ -627,11 +637,12 @@ class Keithley2450(Instrument, KeithleyBuffer):
 
     def shutdown(self):
         """ Ensures that the current or voltage is turned to zero
-        and disables the output. """
+            and disables the output. """
         log.info("Shutting down %s.", self.name)
-        if self.source_mode == 'current':
-            self.ramp_to_current(0.0)
-        else:
-            self.ramp_to_voltage(0.0)
+        if self.sense_mode != 'resistance':
+            if self.source_mode == 'current':
+                self.ramp_to_current(0.0)
+            else:
+                self.ramp_to_voltage(0.0)
         self.stop_buffer()
         self.disable_source()
