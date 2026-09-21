@@ -326,7 +326,7 @@ class LecroyT3DSOBase(Instrument):
 
     acquisition_memory_mode = Instrument.control(
         ":ACQuire:MMANagement?",
-          ":ACQuire:MMANanagement %s",
+          ":ACQuire:MMANagement %s",
         """Control of the memory mode of the oscilloscope.
 
         -AUTO mode maintain the maximum sampling rate, and

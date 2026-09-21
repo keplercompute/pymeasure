@@ -62,6 +62,20 @@ class LecroyT3DSO4104L(LecroyT3DSOBase):
         self.ch4 = ChannelBase(self, 4)
 
 
+    def trigger_edge_source(self, channel):
+        """
+        Set the edge trigger source. The base class accepts channels 1-8, but
+        this scope has four, so reject a higher channel here with a clear error
+        instead of letting the scope refuse the command.
+
+        :param channel: 0 for the EXT input, or an analog channel 1-4.
+        """
+        if channel not in (0, 1, 2, 3, 4):
+            raise ValueError(f'{channel} not a valid trigger source: use 0 for '
+                             f'EXT or 1-4 for an analog channel')
+        super().trigger_edge_source(channel)
+
+
     ################
     # System Setup #
     ################
