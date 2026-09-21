@@ -62,23 +62,6 @@ class LecroyT3DSO4104L(LecroyT3DSOBase):
         self.ch4 = ChannelBase(self, 4)
 
 
-    def trigger_edge_source(self, channel):
-        #good
-        """
-        Function to set the edge trigger source. Does not implement Digital
-        Line. 
-        :param channel: Integer corresponding to a given channel (0 is aux)
-        :return:
-        """
-        if channel == 0:
-            source = 'EX'
-        elif channel in [1, 2, 3, 4]:
-            source = 'C%d' % channel
-        else:
-            raise ValueError(f'{channel} not a valid trigger source')
-        self.write(f""":TRIGger:EDGE:SOURce %s""")
-
-
     ################
     # System Setup #
     ################
