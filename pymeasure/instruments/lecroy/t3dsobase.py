@@ -230,7 +230,7 @@ class LecroyT3DSOBase(Instrument):
 
     trigger_edge_level = Instrument.control(
         #good
-        ":TRIGger:EDGE:LEVel?'",
+        ":TRIGger:EDGE:LEVel?",
         """:TRIGger:EDGE:LEVel %.4E""",
         """ A float control that sets the trigger level in V, range is +-0.82 V""",
         validator=strict_range,
@@ -259,7 +259,7 @@ class LecroyT3DSOBase(Instrument):
         """
         Convenience function to set the scope trigger to edge, source to channel source at the specified level
         """
-        self.trigger_mode = 'EDGE'
+        self.trigger_type = 'EDGE'
         self.trigger_edge_level = level
         self.trigger_edge_slope = slope
         self.trigger_edge_source(source)
@@ -326,7 +326,7 @@ class LecroyT3DSOBase(Instrument):
 
     acquisition_memory_mode = Instrument.control(
         ":ACQuire:MMANagement?",
-          ":ACQuire:MMANanagement %s",
+          ":ACQuire:MMANagement %s",
         """Control of the memory mode of the oscilloscope.
 
         -AUTO mode maintain the maximum sampling rate, and
