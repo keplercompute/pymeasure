@@ -1,0 +1,95 @@
+#
+# This file is part of the PyMeasure package.
+#
+# Copyright (c) 2013-2021 PyMeasure Developers
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+
+import logging
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
+
+import numpy as np
+from pymeasure.instruments import Instrument
+from pymeasure.instruments.validators import strict_discrete_set, strict_range
+from time import sleep, time
+import struct
+from pyvisa.errors import VisaIOError
+from pymeasure.instruments.lecroy.t3dsobase import LecroyT3DSOBase, ChannelBase
+
+
+class LecroyT3DSO4108L(LecroyT3DSOBase):
+    """ Represents the Lecroy T3DSO4108L scope.
+
+    .. code-block:: python
+
+        scope = LecroyT3DSO4108L(resource)
+
+        scope.shutdown()
+
+    """
+
+    BOOLS = {True: 1, False: 0}
+
+    def __init__(self, adapter, *args, **kwargs):
+        super(LecroyT3DSO4108L, self).__init__(
+            adapter, "LecroyT3DSO4108L", **kwargs
+        )
+        # Account for setup time for timebase_mode, waveform_points_mode
+        self.adapter.connection.timeout = 6000
+        self.system_headers = False
+        self.ch1 = ChannelBase(self, 1)
+        self.ch2 = ChannelBase(self, 2)
+        self.ch3 = ChannelBase(self, 3)
+        self.ch4 = ChannelBase(self, 4)
+        self.ch5 = ChannelBase(self, 5)
+        self.ch6 = ChannelBase(self, 6)
+        self.ch7 = ChannelBase(self, 7)
+        self.ch8 = ChannelBase(self, 8)
+
+
+    def trigger_edge_source(self, channel):
+        """
+        Set the edge trigger source. The base class accepts channels 1-8, but
+        this scope has four, so reject a higher channel here with a clear error
+        instead of letting the scope refuse the command.
+
+        :param channel: 0 for the EXT input, or an analog channel 1-4.
+        """
+        if channel not in (0, 1, 2, 3, 4, 5, 6, 7, 8):
+            raise ValueError(f'{channel} not a valid trigger source: use 0 for '
+                             f'EXT or 1-8 for an analog channel')
+        super().trigger_edge_source(channel)
+
+
+    ################
+    # System Setup #
+    ################
+
+
+    def ch(self, channel_number):
+        #good
+        if not isinstance(channel_number, int):
+            raise ValueError(f'Channel number must be an int, not {type(channel_number)}')
+        if channel_number in [1,2,3,4,5,6,7,8]:
+            return getattr(self, f'ch{channel_number}')
+        else:
+            raise ValueError(f"Invalid channel number: {channel_number}. Must be 1-8.")

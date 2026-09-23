@@ -26,3 +26,4 @@ from .wm845zi_a import LecroyWM845Zi_A
 from .mda8000 import LecroyWR8000
 from .hdo4000 import LecroyHDO4000
 from .t3dso4104l import LecroyT3DSO4104L
+from .t3dso4108l import LecroyT3DSO4108L

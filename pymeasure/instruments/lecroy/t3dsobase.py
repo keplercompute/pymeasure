@@ -86,6 +86,11 @@ class ChannelBase():
         Limits are [1e-3,1]"""
     )
 
+    probe = Instrument.control(
+        "PROBe?", "PROBe VALUE,%g",
+        """A float parameter for the channel's probe attenuation factor (e.g. 1, 10)."""
+    )
+
     switch = Instrument.control(
         # good
         "SWITch?", "SWITch %s",
