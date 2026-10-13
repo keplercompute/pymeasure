@@ -124,6 +124,18 @@ class Monitor(QtCore.QThread):
                 self.progress.emit(data)
             elif topic == 'log':
                 self.log.emit(data)
+            elif topic == 'error':
+                # Worker/Analyzer.handle_error emits the formatted traceback on
+                # this topic. Nothing used to consume it, and the log handlers
+                # that would have carried handle_error's log.exception are
+                # commented out in experiment/workers.py -- so a failed
+                # analysis showed up as a bare FAILED status with the traceback
+                # discarded, leaving no way to tell why. Forward it into the
+                # same log stream the GUI already displays.
+                self.log.emit(logging.LogRecord(
+                    name=__name__, level=logging.ERROR, pathname=__file__,
+                    lineno=0, msg="%s", args=(data,), exc_info=None,
+                ))
 
         log.info("Monitor caught stop command")
 

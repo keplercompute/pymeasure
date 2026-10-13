@@ -291,8 +291,22 @@ class LecroyT3DSOBase(Instrument):
         """
         if sequence_on:
             self.run()
+            # :TRIG:RUN is asynchronous, and the ACQuire:TYPE -> NORM switch is
+            # only honored while the scope is actually acquiring. A scope left in
+            # AVERage by a prior capture otherwise stays in average (the NORM
+            # command lands before it leaves Stop and is ignored), so sequence
+            # mode never engages. Wait for it to leave Stop before switching.
+            deadline = time() + 5.0
+            while time() < deadline and 'stop' in str(self.run_state).strip().lower():
+                sleep(0.05)
             self.acquisition_type = 'NORM'
             self.wait_for_op()
+            # Confirm the switch took (raw query -- ":ACQuire:TYPE?" returns e.g.
+            # "AVERAGE,16" or "NORMAL"); if the scope was slow to start acquiring,
+            # retry the NORM set once now that it is definitely running.
+            if 'aver' in str(self.ask(':ACQuire:TYPE?')).strip().lower():
+                self.acquisition_type = 'NORM'
+                self.wait_for_op()
             self.sequence_status = True
             self.n_sequences = n_sequences
             self.stop()

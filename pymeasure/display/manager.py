@@ -548,12 +548,25 @@ class AnalyzerManager(QtCore.QObject):
         experiment = self._running_analysis
         self._clean_up()
         self.failed_am.emit(experiment)
+        # A failure must keep the queue moving, exactly as _finish does.
+        # Without this the queue stalls on the first failed analysis: the failed
+        # one keeps its FAILED status so AnalysisQueue.next() skips it forever,
+        # and nothing else restarts the chain. The only reason it ever recovered
+        # was the next queue() call finding is_running() False -- so once the
+        # measurement stops emitting progress, every remaining analysis
+        # (including the final, complete-data one) was simply never run.
+        # _is_continuous is False after a user abort, which is what keeps an
+        # explicit abort from immediately restarting the queue.
+        if self._is_continuous:
+            self.next()
 
     def _abort_returned(self):
         log.debug("Analyzer manager's running analysis has returned after an abort")
         experiment = self._running_analysis
         self._clean_up()
         self.abort_returned_am.emit(experiment)
+        if self._is_continuous:  # see _failed
+            self.next()
 
     def _finish(self):
         log.debug("Analyzer manager's running analysis has finished")
