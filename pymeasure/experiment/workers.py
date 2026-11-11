@@ -118,7 +118,7 @@ class Worker(StoppableThread):
             pass  # No dumps defined
         if topic == 'results':
             self.recorder.handle(record)
-        elif topic == 'status' or topic == 'progress':
+        elif topic in ('status', 'progress', 'error'):
             self.monitor_queue.put((topic, record))
 
     def handle_abort(self):
@@ -259,7 +259,7 @@ class Analyzer(StoppableThread):
         except (NameError, AttributeError):
             pass  # No dumps defined
 
-        if topic == 'status' or topic == 'progress':
+        if topic in ('status', 'progress', 'error'):
             self.monitor_queue.put((topic, record))
 
     def handle_abort(self):
