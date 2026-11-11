@@ -56,6 +56,7 @@ class AnalysisBrowserWidget(QtWidgets.QWidget):
 
         self._parent.browser_widget.manager.finished.connect(self.queue_analysis)
         self._parent.browser_widget.manager.abort_returned.connect(self.aborted_queue_analysis)
+        self._parent.browser_widget.manager.failed.connect(self.failed_queue_analysis)
         self._parent.browser_widget.manager.progress_updated.connect(self.updated_queue_analysis)
 
         self.analysis_browser.itemChanged.connect(self.analysis_browser_item_changed)
@@ -143,6 +144,15 @@ class AnalysisBrowserWidget(QtWidgets.QWidget):
         results = experiment.results
         if results.routine is not None:
             if results.routine.run_after_abort:
+                self.queue_analysis(experiment)
+
+    def failed_queue_analysis(self, experiment):
+        # Opt-in per routine, like run_after_abort: most analyses expect a
+        # complete measurement, but some (fatigue) keep what was measured
+        # before the failure.
+        results = experiment.results
+        if results.routine is not None:
+            if getattr(results.routine, 'run_after_failure', False):
                 self.queue_analysis(experiment)
 
     def updated_queue_analysis(self, experiment):
